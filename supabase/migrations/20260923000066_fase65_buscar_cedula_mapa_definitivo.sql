@@ -136,4 +136,5 @@ drop function if exists delegados.portal_bot_resumen();
 -- Esperado: cero filas.
 select p.proname
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
- where n.nspname = 'delegados' and pg_get_functiondef(p.oid) like '%_mapeo_municipio%';
+ where n.nspname = 'delegados' and p.prokind = 'f'   -- solo funciones normales; las agregadas no tienen código legible
+   and pg_get_functiondef(p.oid) like '%_mapeo_municipio%';

@@ -34,6 +34,7 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 ## Regla aprendida
 
 - Las comprobaciones al final de una migración no pueden llamar funciones que exijan `portal_rol()`: el editor SQL no tiene sesión y el fallo revierte toda la migración.
+- Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
 
