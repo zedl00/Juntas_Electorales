@@ -12,7 +12,11 @@ export const edad = f => {
   if (m < 0 || (m === 0 && h.getDate() < d.getDate())) e--;
   return e;
 };
-export const fecha = d => d ? new Date(d).toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric' }) : '';
+/* Una fecha «solo día» (1968-11-15) se interpreta como día local, no como medianoche UTC:
+   si no, en República Dominicana (UTC-4) se mostraría el día anterior. */
+const fechaLocal = d => (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d))
+  ? new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) : new Date(d);
+export const fecha = d => d ? fechaLocal(d).toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric' }) : '';
 export const fechaHora = d => d ? new Date(d).toLocaleDateString('es-DO', { day:'2-digit', month:'short' }) + ' ' + new Date(d).toLocaleTimeString('es-DO', { hour:'2-digit', minute:'2-digit' }) : '';
 export const hoyLarga = () => new Date().toLocaleDateString('es-DO', { day:'numeric', month:'long', year:'numeric' });
 export const genPin = () => String(Math.floor(100000 + Math.random() * 900000));
