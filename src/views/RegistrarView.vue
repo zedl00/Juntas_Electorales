@@ -128,7 +128,7 @@ const buscarCed = async () => {
   exp24.value = !!data?.experiencia_2024;
   reqR.inscrito = !mismatch.value;
   await evaluarTraslado();
-  if (pideColegio.value && !colegios.value.length) await cargarColegios();
+  if (pideColegio.value) await cargarColegios();   // siempre del territorio actual
 };
 
 onMounted(() => {
@@ -363,6 +363,23 @@ const imprimirBlanco = () => printBlanco(munReg.value || 0);
               </div>
             </div>
             <div v-if="esOclee" class="okbx">Territorio del exterior: se registrará bajo la <b>{{ selMunObj?.nombre }}</b>. La verificación de demarcación no aplica.</div>
+
+            <!-- Vota en este territorio y la configuración pide colegio en cada registro («Preguntar en cada registro»).
+                 Por defecto queda en su propio colegio; se puede mandar a otro del mismo municipio. -->
+            <div v-if="!mismatch && pideColegio" class="rounded-xl border border-line bg-paper p-3.5">
+              <label class="lbl !mb-1">Colegio donde trabajará</label>
+              <select v-model.number="colElegido" class="inp !bg-white !py-2 text-[13px]" :disabled="colBusy">
+                <option :value="0">Su propio colegio · {{ lkp.codigo_colegio || lkp.id_colegio }} — {{ lkp.colegio_desc }}</option>
+                <optgroup v-for="g in colPorRecinto" :key="g.recinto" :label="g.recinto">
+                  <option v-for="c in g.items" :key="c.id_colegio" :value="c.id_colegio" :disabled="c.id_colegio === lkp.id_colegio">
+                    {{ c.codigo }} — {{ c.personas }} de 3{{ c.faltan ? ' · faltan ' + c.faltan : ' · completo' }}
+                  </option>
+                </optgroup>
+              </select>
+              <p class="text-[11px] text-mut mt-1 leading-snug">
+                {{ colBusy ? 'Cargando colegios…' : 'Por defecto queda donde vota. Elige otro colegio del mismo municipio solo si conviene reforzar un recinto con faltantes.' }}
+              </p>
+            </div>
           </template>
         </template>
 

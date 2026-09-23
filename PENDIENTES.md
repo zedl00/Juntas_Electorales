@@ -5,7 +5,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 ## Próximo
 
 1. **Aplicar fase 64** (encargado limitado a su municipio, también en la base). Esperado: 1 fila ok = true.
-2. **Aplicar fase 65** (la búsqueda de cédula usa la correspondencia definitiva; corrige «vota en Tamboril»). Esperado: cero filas.
+2. **Aplicar fase 66** (OCLEE sin regla de traslado). Esperado: 1 fila ok = true.
 3. **Subir `dist`** al subdominio (Registrar, Asignación y menú cambiaron).
 4. **Probar el flujo completo** con el usuario administrador: asignar a Camilo (0129-00001) con la sugerencia preseleccionada; registrar una cédula de otro municipio con un usuario encargado (no admin) y ver que ahora pasa; en Gestión → Traslados activar «requiere autorización», registrar otra de otra provincia y ver que aparece en «Esperan autorización» y no cuenta; aprobarla en Dirigencia → Traslados y ver que pasa a contar.
 4. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
@@ -39,6 +39,9 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 ## Hecho
 
 - Fase 63 aplicada; disparador `aa_p28_control_colegio` confirmado primero (23 sep 2026).
+- Fase 65 aplicada y confirmada en pantalla (Santo Domingo de Guzmán). Fase 64 aplicada. Prueba de Camilo ok (23 sep 2026).
+- Corregido: con «Preguntar en cada registro» el selector de colegio no aparecía para quien vota en el municipio.
+- Fase 66 escrita: OCLEE sin traslado.
 - Fase 65 escrita: diagnóstico confirmó que `_mapeo_municipio` traducía Distrito Nacional como Tamboril; buscar_cedula pasa a `_unidades_jce` (23 sep 2026).
 - Fase 64 escrita: el encargado solo registra a quien vota en su municipio (23 sep 2026).
 - Fase 63 escrita y pantallas de registro y Asignación fortalecidas (23 sep 2026): Opción 1, cuatro mejoras, contador en el menú.
