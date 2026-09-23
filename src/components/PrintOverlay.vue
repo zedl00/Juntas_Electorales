@@ -29,13 +29,20 @@ const votaCirc = computed(() => printJob.value?.p?.circunscripcion || '');
    asigna después, y esas líneas quedan en blanco para completarlas. */
 const hayTraslado = computed(() => !!printJob.value?.p?.fuera_de_colegio);
 
-const trabajaRecinto   = computed(() => hayTraslado.value ? '' : votaRecinto.value);
-const trabajaColegio   = computed(() => hayTraslado.value ? '' : votaColegio.value);
-const trabajaCirc      = computed(() => hayTraslado.value ? '' : votaCirc.value);
-const trabajaMunicipio = computed(() => printJob.value?.p ? (printJob.value?.mun?.nombre || '') : '');
+/* Si ya hay colegio asignado (o solicitado), el bloque B lo imprime; si no, cae al padrón o en blanco */
+const tr = computed(() => printJob.value?.trabaja || null);
+const trabajaRecinto   = computed(() => tr.value ? (tr.value.recinto || '') : (hayTraslado.value ? '' : votaRecinto.value));
+const trabajaColegio   = computed(() => tr.value ? (tr.value.codigo || '')  : (hayTraslado.value ? '' : votaColegio.value));
+const trabajaCirc      = computed(() => tr.value ? (tr.value.circ && tr.value.circ !== '—' ? tr.value.circ : '') : (hayTraslado.value ? '' : votaCirc.value));
+const trabajaMunicipio = computed(() => {
+  if (!printJob.value?.p) return '';
+  const mun = printJob.value?.mun?.nombre || '';
+  return tr.value?.distrito && tr.value.distrito !== mun ? `${tr.value.distrito} · ${mun}` : mun;
+});
 
 const etiquetaB = computed(() => {
   if (!printJob.value?.p) return '· a completar';
+  if (tr.value?.solicitado) return '· solicitado, pendiente de la SNE';
   return hayTraslado.value ? '· otra demarcación' : '· el mismo lugar';
 });
 </script>

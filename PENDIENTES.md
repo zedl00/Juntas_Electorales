@@ -5,8 +5,9 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 ## Próximo
 
 1. **Aplicar fase 64** (encargado limitado a su municipio, también en la base). Esperado: 1 fila ok = true.
-3. **Prueba de Francisca** en tres rondas (autorizar → aprobar en Dirigencia; bloquear; permitir), con la configuración actual: alcance municipio, «Requiere autorización», encargado solo municipio.
-4. **Subir `dist`** al subdominio (Registrar, Asignación, Usuarios y menú cambiaron).
+3. **Aplicar fase 68** (avance por territorio en la lista de usuarios). Esperado: 1 fila `portal_kpi_usuarios`.
+4. **Prueba de Francisca**, ronda 3 pendiente (permitir sin trámite) (autorizar → aprobar en Dirigencia; bloquear; permitir), con la configuración actual: alcance municipio, «Requiere autorización», encargado solo municipio.
+5. **Subir `dist`** al subdominio (Registrar, Asignación, Usuarios y menú cambiaron).
 6. **Probar el flujo completo** con el usuario administrador: asignar a Camilo (0129-00001) con la sugerencia preseleccionada; registrar una cédula de otro municipio con un usuario encargado (no admin) y ver que ahora pasa; en Gestión → Traslados activar «requiere autorización», registrar otra de otra provincia y ver que aparece en «Esperan autorización» y no cuenta; aprobarla en Dirigencia → Traslados y ver que pasa a contar.
 4. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
 
@@ -22,7 +23,6 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - **Fase 63 · control formal del colegio en el registro** (depende de la decisión del punto 1 de Próximo; hallazgo: hoy el alcance configurado es solo informativo, el encargado nunca puede registrar fuera de su municipio): disparador `before insert/update` en `postulantes_2028` que verifique que `colegio_asignado` pertenece al municipio, recalcule los datos del padrón en la base y proteja `traslado_estado`, `autorizado_por` y columnas sensibles para quien no sea admin.
 - **Fase 64 · función definer para Strategos** (`padron_buscar`, `padron_resumen_municipio`, `padron_por_cedula`) y retirar de nuevo el `select` de `jce_padron` a `authenticated`.
 - **Solicitud de PIN rota**: el botón «Solicitar» de «¿Olvidaste tu PIN?» llama a `portal_delegados_solicitar_pin`, que no existe; muestra éxito sin guardar nada. Diseñar autoservicio: cédula + código de un solo uso por WhatsApp/Telegram + PIN nuevo.
-- **Formulario impreso**: el bloque B «Trabajará en» sale vacío aunque haya `colegio_asignado`.
 - **Listado de Postulantes** no muestra el colegio asignado.
 - **Sesión en el navegador**: decidir memoria pura (documento de seguridad) o persistencia con caducidad por inactividad.
 - **PIN inicial de 6 dígitos**: exigir PIN personal de 8 o más caracteres.
@@ -41,6 +41,7 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Fase 63 aplicada; disparador `aa_p28_control_colegio` confirmado primero (23 sep 2026).
 - Fase 65 aplicada y confirmada en pantalla (Santo Domingo de Guzmán). Fase 64 aplicada. Prueba de Camilo ok (23 sep 2026).
 - Corregido: con «Preguntar en cada registro» el selector de colegio no aparecía para quien vota en el municipio.
+- Formulario impreso: bloque B imprime recinto, colegio, distrito y circunscripción del colegio asignado o solicitado. Lista de usuarios con avance (registrados de meta, %, colegios). Enlace de los mensajes cambiado a juntas.strategosfp.com (23 sep 2026).
 - Fases 66 y 67 aplicadas. Gestión reorganizada en pestañas (Usuarios · Asistente · Configuración), menos color, sin menciones a Supabase en pantalla; Ayuda actualizada con asignación y configuración (23 sep 2026).
 - Fase 67 escrita: bloquear / autorizar / permitir, límite del encargado parametrizado, permisos de asignación cerrados; tarjetas de Asignación activas (23 sep 2026).
 - Fase 66 escrita: OCLEE sin traslado.

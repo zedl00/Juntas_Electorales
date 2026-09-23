@@ -47,7 +47,15 @@ export async function printIndividual(row) {
   const s = await sellarImpresion('Formulario individual', nom, 1);
   if (!s.ok) { t(s.msg || 'Tu acceso no tiene autorización para imprimir.', 'err'); return; }
   const off = await cargarOficiales(row.municipio_id);
-  printJob.value = { tipo: 'individual', p: row, mun: munObjDe(row.municipio_id), off };
+  /* Colegio donde trabajará (asignado, o solicitado si el traslado está pendiente) */
+  let trabaja = null;
+  const idCol = row.colegio_asignado || row.colegio_solicitado;
+  if (idCol && row.municipio_id) {
+    const { data } = await sb.rpc('portal_cobertura_colegios', { p_municipio: row.municipio_id, p_jce: null, p_circ: null });
+    const c = (data || []).find(x => x.id_colegio === idCol);
+    if (c) trabaja = { codigo: c.colegio, recinto: c.recinto, circ: c.circunscripcion, distrito: c.distrito, solicitado: !row.colegio_asignado };
+  }
+  printJob.value = { tipo: 'individual', p: row, mun: munObjDe(row.municipio_id), off, trabaja };
 }
 
 export async function printBlanco(munId) {

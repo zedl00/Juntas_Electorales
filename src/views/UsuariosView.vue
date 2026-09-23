@@ -6,13 +6,32 @@ import { sb, sbAux, EMAIL_DOM, PORTAL_URL } from '../lib/supabase';
 import { perfil, esAdmin } from '../stores/auth';
 import { catMap, catGrupos, provsOf, regiones } from '../stores/catalogo';
 import { rolLbl, alcanceLbl } from '../lib/constantes';
-import { fmtCed, soloDig, fecha, fechaHora, genPin, waLink } from '../lib/formato';
+import { fmt, fmtCed, soloDig, fecha, fechaHora, genPin, waLink } from '../lib/formato';
 import { t, copiar } from '../stores/toasts';
 
 const permRol = ref([]), permBusy = ref(false);
 const usrs = ref([]), uBusy = ref(false), uF = ref({ q: '', rol: '', prov: '', mun: '', jce: '', ambito: '' });
 const showCrear = ref(false), cuBusy = ref(false), cuErr = ref(''), cuPend = ref(null), cuOk = ref(null);
 const cu = ref({ ced: '', lkpU: null, nombre: '', telefono: '', rol: 'enc_electoral', mun: 0, prov: 0, region: '', pin: genPin(), puedeImp: null });
+
+/* ── Avance por territorio de cada usuario (fase 68): colegios · meta · registrados ── */
+const kpiU = ref(new Map());
+const cargarKpiU = async () => {
+  const { data } = await sb.rpc('portal_kpi_usuarios');
+  kpiU.value = new Map((data || []).map(r => [r.municipio_id + ':' + (r.jce_id ?? ''), r]));
+};
+const sumaFilas = filas => filas.reduce((a, r) => ({ colegios: a.colegios + +r.colegios, meta: a.meta + +r.meta, total: a.total + +r.total }), { colegios: 0, meta: 0, total: 0 });
+const avance = u => {
+  if (!kpiU.value.size) return null;
+  let r = null;
+  if (u.jce_id && u.municipio_id)      r = kpiU.value.get(u.municipio_id + ':' + u.jce_id);
+  else if (u.municipio_id)             r = kpiU.value.get(u.municipio_id + ':');
+  else if (u.provincia_id)             r = sumaFilas([...kpiU.value.values()].filter(x => x.jce_id == null && catMap.value.get(x.municipio_id)?.provincia_id === u.provincia_id));
+  else if (u.region)                   r = sumaFilas([...kpiU.value.values()].filter(x => x.jce_id == null && catMap.value.get(x.municipio_id)?.macroregion === u.region));
+  if (!r) return null;
+  const meta = +r.meta || 0, total = +r.total || 0;
+  return { colegios: +r.colegios || 0, meta, total, pct: meta ? Math.min(100, Math.round(total * 100 / meta)) : 0 };
+};
 
 const cargarUsrs = async () => {
   if (!esAdmin.value) return;
@@ -526,7 +545,7 @@ const guardarPermRol = async (r, campo, valor) => {
   t('Permiso actualizado', 'ok');
 };
 
-onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol(); cargarUsrs(); cargarSolis(); cargarWa(); cargarTg(); });
+onMounted(() => { cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol(); cargarUsrs(); cargarSolis(); cargarWa(); cargarTg(); });
 </script>
 
 <template>
@@ -596,7 +615,7 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
       <div class="overflow-x-auto">
         <table class="w-full min-w-[980px]">
           <thead class="bg-paper border-b border-line"><tr>
-            <th class="th">Nombre</th><th class="th">Cédula</th><th class="th">Rol</th><th class="th">Territorio · Ámbito · Contacto</th><th class="th">Último acceso</th>
+            <th class="th">Nombre</th><th class="th">Cédula</th><th class="th">Rol</th><th class="th">Territorio · Ámbito · Contacto</th><th class="th">Avance</th><th class="th">Último acceso</th>
               <th class="th text-center">Instructivo</th><th class="th">Estado</th><th class="th text-right">Acciones</th>
           </tr></thead>
           <tbody>
@@ -632,6 +651,14 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
                     <span v-if="u.telefono">{{ fmtTel(u.telefono) }}</span>
                   </div>
                 </td>
+              <td class="td whitespace-nowrap">
+                <template v-if="avance(u)">
+                  <div class="text-[12px] tabular-nums"><b>{{ fmt(avance(u).total) }}</b> <span class="text-mut">de {{ fmt(avance(u).meta) }}</span> <span class="text-[10.5px] text-mut">· {{ avance(u).pct }}%</span></div>
+                  <div class="h-1 w-24 rounded-full bg-line/70 overflow-hidden mt-1"><div class="h-full bg-fp-600" :style="{ width: avance(u).pct + '%' }"></div></div>
+                  <div class="text-[10.5px] text-mut mt-0.5">{{ fmt(avance(u).colegios) }} colegios · meta ×3</div>
+                </template>
+                <span v-else class="text-[11px] text-mut">—</span>
+              </td>
               <td class="td whitespace-nowrap"><span v-if="u.ultimo_acceso" class="text-[12px]">{{ fechaHora(u.ultimo_acceso) }}</span><span v-else class="badge border-amber-200 bg-amber-50 text-amber-800">Nunca</span></td>
               <td class="td text-center">
                 <span v-if="u.acuse_instructivo" class="text-[11.5px] font-semibold text-fp-700 whitespace-nowrap">✓ {{ fecha(u.acuse_instructivo) }}</span>
