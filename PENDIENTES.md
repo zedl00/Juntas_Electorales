@@ -4,9 +4,8 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-1. **Aplicar fase 62** (la tarjeta «Cobertura de colegios» de Inicio sale de `portal_kpi_filtro`, que no estaba en la 61). Luego recargar Inicio: Incompletos debe reflejar los colegios asignados.
-2. **Comprobar los datos de los 5 registros**: si los 4 registrados antes de la v8.6 no tienen `colegio_asignado`, no contarán en ninguna tarjeta hasta rellenarlo.
-3. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
+1. **Asignar colegio al formulario 0129-00001** desde la pantalla Asignación (es el único sin `colegio_asignado`; vota en un colegio del municipio 12 y se registró en el 129). Al hacerlo, Incompletos pasa de 4 a 5.
+2. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
 
 Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde GitHub Desktop después de cada sesión.
 
@@ -36,6 +35,7 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Hecho
 
+- Fase 62 aplicada (23 sep 2026); cobertura validada: 4 colegios incompletos corresponden a los 4 registros con colegio asignado.
 - Fase 62 escrita (23 sep 2026): las cuatro funciones restantes cuentan por colegio asignado.
 - Fase 61 aplicada (23 sep 2026): cobertura sin error y contada por colegio asignado.
 - v8.7.0: versión visible, `.htaccess` con cabeceras (verificado en servidor), captcha Turnstile con interruptor administrado, fases 58 a 60, paso Confirmar del registro muestra el colegio asignado, git iniciado.
