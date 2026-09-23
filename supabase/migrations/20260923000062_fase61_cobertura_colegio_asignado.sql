@@ -89,5 +89,10 @@ begin
   return v;
 end $$;
 
--- Comprobación: debe devolver filas (una por municipio visible) sin error.
-select count(*) as municipios_con_cobertura from delegados.portal_cobertura_resumen();
+-- Comprobación (sin necesitar sesión): las dos funciones deben mostrar 'colegio_asignado'
+-- en su cuerpo y ninguna debe conservar la línea ambigua. Esperado: 2 filas con ok = true.
+select p.proname,
+       pg_get_functiondef(p.oid) like '%colegio_asignado%'
+         and pg_get_functiondef(p.oid) not like '%select municipio_id, id_colegio from delegados._colegio_oclee%' as ok
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'delegados' and p.proname in ('portal_cobertura_resumen','portal_kpi');
