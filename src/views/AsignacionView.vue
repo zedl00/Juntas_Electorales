@@ -14,6 +14,7 @@ const router = useRouter();
 const mun = ref(0), cargando = ref(false), err = ref('');
 const pendientes = ref([]), colegios = ref([]), resumen = ref({});
 const asignados = ref([]), pendAut = ref([]);   // con colegio (para mover) · esperan autorización de la SNE
+const rechazados = ref([]), reabriendo = ref(0);  // traslados rechazados por la SNE (fase 72)
 const infoCol = ref(new Map());                  // id_colegio → { codigo, recinto, distrito, municipio } (fase 70)
 const cargarInfoCol = async ids => {
   const faltan = [...new Set(ids.filter(Boolean))].filter(id => !infoCol.value.has(id));
@@ -48,7 +49,7 @@ const cargar = async () => {
        : Promise.resolve({ data: [] })
   ]);
   /* Con colegio (para reasignar) y traslados pendientes de la SNE: lectura directa, la RLS acota el alcance */
-  const [a, pa] = await Promise.all([
+  const [a, pa, rz] = await Promise.all([
     (() => { let s = sb.from('postulantes_2028')
            .select('id,numero_formulario,nombres,apellido1,apellido2,cargo_postulado,telefono,municipio_id,colegio_asignado,id_colegio_padron,codigo_colegio,traslado_estado')
            .not('colegio_asignado', 'is', null)
@@ -59,6 +60,11 @@ const cargar = async () => {
            .select('id,numero_formulario,nombres,apellido1,apellido2,cargo_postulado,municipio_id,colegio_solicitado,colegio_padron_desc,created_at')
            .eq('traslado_estado', 'pendiente').not('estado', 'in', '("rechazado","no_aprobado")')
            .order('created_at').range(0, 999);
+           return id ? s.eq('municipio_id', id) : s; })(),
+    (() => { let s = sb.from('postulantes_2028')
+           .select('id,numero_formulario,nombres,apellido1,apellido2,cargo_postulado,municipio_id,colegio_solicitado,colegio_padron_desc,traslado_resuelto_por,traslado_resuelto_en,traslado_nota')
+           .eq('traslado_estado', 'rechazado').not('estado', 'in', '("rechazado","no_aprobado")')
+           .order('traslado_resuelto_en', { ascending: false }).range(0, 999);
            return id ? s.eq('municipio_id', id) : s; })()
   ]);
   cargando.value = false;
@@ -73,7 +79,9 @@ const cargar = async () => {
   colegios.value = c.data || [];
   asignados.value = a.data || [];
   pendAut.value = pa.data || [];
-  cargarInfoCol([...asignados.value.map(x => x.colegio_asignado), ...pendAut.value.map(x => x.colegio_solicitado)]);
+  rechazados.value = rz.data || [];
+  cargarInfoCol([...asignados.value.map(x => x.colegio_asignado), ...pendAut.value.map(x => x.colegio_solicitado), ...rechazados.value.map(x => x.colegio_solicitado)]);
+  cargarSinColegio();   // el contador del menú siempre al día
   /* Sugerencia: el colegio con más faltantes queda preseleccionado; el encargado solo confirma */
   const sugerido = porRecinto.value[0]?.items?.[0]?.id_colegio;
   if (sugerido) pendientes.value.forEach(x => { if (!eleccion.value[x.id]) eleccion.value[x.id] = sugerido; });
@@ -148,6 +156,17 @@ const mover = async (row) => {
   if (!data?.ok) { t(data?.msg || 'No se pudo mover', 'err'); return; }
   t(`${nombreDe(row)} movido a ${colegioTxt(col)}`, 'ok');
   delete movEleccion.value[row.id];
+  cargar();
+};
+
+/* Reabrir un traslado rechazado: vuelve a la bandeja de la SNE (solo administración) */
+const reabrir = async (r) => {
+  reabriendo.value = r.id;
+  const { data, error } = await sb.rpc('portal_traslado_reabrir', { p_id: r.id, p_nota: null });
+  reabriendo.value = 0;
+  if (error) { t('Error: ' + error.message, 'err'); return; }
+  if (!data?.ok) { t(data?.msg || 'No se pudo reabrir', 'err'); return; }
+  t(data.msg, 'ok');
   cargar();
 };
 
@@ -269,6 +288,20 @@ const cargoTxt = c => cargoLbl[c] || c;
           <span class="text-mut">{{ r.numero_formulario }} · {{ cargoTxt(r.cargo_postulado) }}</span>
           <span class="text-mut">vota en {{ r.colegio_padron_desc || '—' }}</span>
           <span v-if="r.colegio_solicitado" class="badge border-amber-300 bg-amber-50 text-amber-800">solicita {{ colegioTxt(r.colegio_solicitado) }}</span>
+        </div>
+      </div>
+
+      <!-- Traslados rechazados por la SNE: no cuentan; solo la administración puede reabrirlos -->
+      <div v-if="rechazados.length" class="card p-4 border-line bg-paper/60">
+        <h3 class="font-serif font-bold text-[16px] mb-1">Traslados rechazados por la SNE · {{ fmt(rechazados.length) }}</h3>
+        <p class="text-[12px] text-mut mb-3">Siguen registrados, pero no cuentan para ningún colegio y no pueden recibir colegio en este territorio. Solo la administración puede reabrir el caso para decidirlo de nuevo.</p>
+        <div v-for="r in rechazados" :key="r.id" class="text-[12.5px] py-1.5 border-b border-line/60 last:border-0 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <b>{{ nombreDe(r) }}</b>
+          <span class="text-mut">{{ r.numero_formulario }} · {{ cargoTxt(r.cargo_postulado) }} · {{ territorioDe(r) }}</span>
+          <span class="text-mut">vota en {{ r.colegio_padron_desc || '—' }}</span>
+          <span v-if="r.colegio_solicitado" class="text-mut">solicitaba {{ colegioTxt(r.colegio_solicitado) }}</span>
+          <span class="text-[11px] text-mut">rechazado por {{ r.traslado_resuelto_por || '—' }}<span v-if="r.traslado_nota"> · «{{ r.traslado_nota }}»</span></span>
+          <button v-if="esAdmin" class="btn-o btn-s ml-auto" :disabled="reabriendo === r.id" @click="reabrir(r)">{{ reabriendo === r.id ? 'Reabriendo…' : 'Reabrir para revisión' }}</button>
         </div>
       </div>
 

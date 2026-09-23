@@ -6,6 +6,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 1. **Aplicar fase 64** (encargado limitado a su municipio, también en la base). Esperado: 1 fila ok = true.
 3. **Aplicar fase 69** (formularios habilitados, aplicado en la base). Esperado: 1 fila con los dos valores en true.
+3d. **Aplicar fase 72** (reabrir traslados rechazados). Esperado: 1 fila `portal_traslado_reabrir`.
 3c. **Aplicar fase 71** (bandeja de traslados muestra el colegio solicitado y quién registró). Esperado: 1 fila ok = true.
 3b. **Aplicar fase 70** (datos legibles de colegio por id). Esperado: 1 fila `portal_colegio_info`. Luego Asignación debe decir «solicita 0043 · CENTRO EDUCATIVO HIGUERITO · San Juan de la Maguana».
 4. **Prueba de Francisca**, ronda 3 pendiente (permitir sin trámite) (autorizar → aprobar en Dirigencia; bloquear; permitir), con la configuración actual: alcance municipio, «Requiere autorización», encargado solo municipio.

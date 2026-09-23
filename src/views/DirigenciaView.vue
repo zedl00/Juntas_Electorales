@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { sb } from '../lib/supabase';
 import { trasladoLbl } from '../lib/constantes';
 import { fmt } from '../lib/formato';
+import { cargarSinColegio } from '../stores/kpi';
 import AnilloAvance from '../components/AnilloAvance.vue';
 
 const nodos = ref([]), cargando = ref(true), err = ref('');
@@ -38,7 +39,7 @@ const resolver = async (r, aprobar) => {
   if (error) { t('Error: ' + error.message, 'err'); return; }
   if (!data?.ok) { t(data?.msg || 'No se pudo resolver', 'err'); return; }
   t(data.msg, 'ok');
-  cargarTraslados();
+  cargarTraslados(); cargarSinColegio();
 };
 
 const traslResumen = computed(() => {

@@ -114,3 +114,7 @@ Casos 3 y 4 de la matriz pasan a: solo la administración. Caso 5: solo la admin
 - **Quién asigna y mueve colegio:** la administración de la SNE en todo el país; en su municipio, el encargado electoral o quien tenga permiso de registrar. Antes cualquier usuario con sesión podía hacerlo.
 - **Pantalla Asignación:** las cuatro tarjetas llevan a su lista. «Con colegio» y «Reubicados» se ven también en la vista nacional, con un botón para entrar al municipio y mover. Los reubicados son quienes trabajan en un colegio distinto del que les toca por el padrón.
 - **Colegio dentro del mismo municipio:** con «Preguntar en cada registro» el selector aparece también para quien vota en el municipio, con su propio colegio preseleccionado.
+
+## 11. Traslado rechazado (fase 72)
+
+Cuando la SNE rechaza un traslado, la persona sigue registrada con su número de formulario, pero sin colegio: no cuenta para la cobertura, no aparece en «Esperan colegio» y nadie salvo la administración puede darle colegio en ese territorio. Se ve en tres sitios: Dirigencia → Traslados con el filtro «Rechazados», la pantalla Asignación en el bloque «Traslados rechazados por la SNE», y Postulantes en su ficha. Como la cédula solo puede registrarse una vez, la única salida es que la administración **reabra** el caso desde Asignación: vuelve a «pendiente» y entra otra vez en la bandeja para decidirlo de nuevo. Cada reapertura queda en la bitácora.
