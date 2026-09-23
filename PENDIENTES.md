@@ -22,6 +22,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Pendiente
 
+- **Lista de usuarios más compacta** (pedido 23 sep): instructivo y estado como iconos con tooltip (fecha o «pendiente» al pasar el ratón); acciones editar, PIN nuevo, reenviar y copiar como iconos con tooltip; filas más cortas.
+- **Poner la API detrás del dominio propio** (pedido 23 sep): un Worker de Cloudflare en `api.juntas.strategosfp.com` que reenvíe a Supabase, para que el WAF y los límites de Cloudflare protejan también la API y el proyecto no quede a la vista. Va como Cloudflare Parte 3, después de que la zona esté activa. Un API Gateway autogestionado (Kong, Tyk, APISIX) haría lo mismo pero exige un servidor propio y mantenimiento; no conviene con el equipo actual.
 
 - **Fase 63 · control formal del colegio en el registro** (depende de la decisión del punto 1 de Próximo; hallazgo: hoy el alcance configurado es solo informativo, el encargado nunca puede registrar fuera de su municipio): disparador `before insert/update` en `postulantes_2028` que verifique que `colegio_asignado` pertenece al municipio, recalcule los datos del padrón en la base y proteja `traslado_estado`, `autorizado_por` y columnas sensibles para quien no sea admin.
 - **Fase 64 · función definer para Strategos** (`padron_buscar`, `padron_resumen_municipio`, `padron_por_cedula`) y retirar de nuevo el `select` de `jce_padron` a `authenticated`.
