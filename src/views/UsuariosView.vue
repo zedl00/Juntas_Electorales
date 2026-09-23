@@ -8,6 +8,7 @@ import { catMap, catGrupos, provsOf, regiones } from '../stores/catalogo';
 import { rolLbl, alcanceLbl } from '../lib/constantes';
 import { fmt, fmtCed, soloDig, fecha, fechaHora, genPin, waLink } from '../lib/formato';
 import { t, copiar } from '../stores/toasts';
+import { cargarDocsCfg } from '../stores/print';
 
 const permRol = ref([]), permBusy = ref(false);
 const usrs = ref([]), uBusy = ref(false), uF = ref({ q: '', rol: '', prov: '', mun: '', jce: '', ambito: '' });
@@ -55,7 +56,33 @@ const cargarUsrs = async () => {
   if (!error) usrs.value = data || [];
 };
 
-const usrsView = computed(() => usrs.value.filter(u => {
+/* ── Orden por columna (clic en el título; segundo clic invierte) ── */
+const uSort = ref({ c: 'nombre', asc: true });
+const ordenarPor = c => { if (uSort.value.c === c) uSort.value.asc = !uSort.value.asc; else uSort.value = { c, asc: true }; };
+const flecha = c => uSort.value.c === c ? (uSort.value.asc ? ' ▲' : ' ▼') : '';
+const terrTexto = u => {
+  const m = catMap.value.get(u.municipio_id);
+  return [m?.provincia_nombre || (u.provincia_id ? String(u.provincia_id) : ''), m?.nombre || '', u.jce_id ? String(u.jce_id) : ''].join(' · ').toLowerCase();
+};
+const claveOrden = u => {
+  switch (uSort.value.c) {
+    case 'cedula':      return soloDig(u.cedula);
+    case 'rol':         return (rolLbl[u.rol] || u.rol || '').toLowerCase();
+    case 'territorio':  return terrTexto(u);
+    case 'avance':      return avance(u)?.pct ?? -1;
+    case 'acceso':      return u.ultimo_acceso || '';
+    case 'instructivo': return u.acuse_instructivo ? 1 : 0;
+    case 'estado':      return (u.activo ? 2 : 0) + (u.primer_acceso ? 0 : 1);
+    default:            return String(u.nombre || '').toLowerCase();
+  }
+};
+const usrsView = computed(() => usrsFiltrados.value.slice().sort((a, b) => {
+  const x = claveOrden(a), y = claveOrden(b);
+  const r = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'es');
+  return uSort.value.asc ? r : -r;
+}));
+
+const usrsFiltrados = computed(() => usrs.value.filter(u => {
   const q = uF.value.q.trim().toLowerCase();
   if (q && !(String(u.nombre || '').toLowerCase().includes(q) || soloDig(u.cedula).includes(soloDig(q)))) return false;
   if (uF.value.rol && u.rol !== uF.value.rol) return false;
@@ -502,6 +529,7 @@ const guardarCfgDoc = async (campo, valor) => {
   const { error } = await sb.rpc('portal_config_documentos_set', { p_campo: campo, p_valor: valor });
   if (error) { t('No se pudo guardar: ' + error.message, 'err'); cargarCfgDoc(); return; }
   cfgDoc.value[campo] = valor;
+  cargarDocsCfg();
   t('Configuración guardada', 'ok');
 };
 
@@ -615,8 +643,11 @@ onMounted(() => { cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); c
       <div class="overflow-x-auto">
         <table class="w-full min-w-[980px]">
           <thead class="bg-paper border-b border-line"><tr>
-            <th class="th">Nombre</th><th class="th">Cédula</th><th class="th">Rol</th><th class="th">Territorio · Ámbito · Contacto</th><th class="th">Avance</th><th class="th">Último acceso</th>
-              <th class="th text-center">Instructivo</th><th class="th">Estado</th><th class="th text-right">Acciones</th>
+            <th v-for="col in [['nombre','Nombre'],['cedula','Cédula'],['rol','Rol'],['territorio','Territorio · Ámbito · Contacto'],['avance','Avance'],['acceso','Último acceso']]" :key="col[0]"
+                class="th cursor-pointer select-none hover:text-ink" :class="uSort.c === col[0] ? 'text-fp-700' : ''" @click="ordenarPor(col[0])" title="Ordenar">{{ col[1] }}{{ flecha(col[0]) }}</th>
+              <th class="th text-center cursor-pointer select-none hover:text-ink" :class="uSort.c === 'instructivo' ? 'text-fp-700' : ''" @click="ordenarPor('instructivo')">Instructivo{{ flecha('instructivo') }}</th>
+              <th class="th cursor-pointer select-none hover:text-ink" :class="uSort.c === 'estado' ? 'text-fp-700' : ''" @click="ordenarPor('estado')">Estado{{ flecha('estado') }}</th>
+              <th class="th text-right">Acciones</th>
           </tr></thead>
           <tbody>
             <tr v-for="u in usrsView" :key="u.id" class="border-b border-line/70">
@@ -1048,6 +1079,7 @@ onMounted(() => { cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); c
       <a class="btn-o btn-s" @click.prevent="irA('config-traslados')">⇄ Traslados y asignación</a>
       <a class="btn-o btn-s" @click.prevent="irA('config-seguridad')">⛨ Seguridad del acceso</a>
       <a class="btn-o btn-s" @click.prevent="irA('config-sello')">⎙ Marca de agua</a>
+      <a class="btn-o btn-s" @click.prevent="irA('config-formularios')">▤ Formularios habilitados</a>
       <a class="btn-o btn-s" @click.prevent="irA('permisos-rol')">⚿ Permisos por rol</a>
     </div>
 
@@ -1199,6 +1231,24 @@ onMounted(() => { cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); c
       </p>
     </section>
 
+
+    <!-- ══ Formularios habilitados (fase 69) ══ -->
+    <section id="config-formularios" class="card p-4 scroll-mt-20">
+      <h3 class="font-serif text-[15px] font-bold mb-1">Formularios habilitados</h3>
+      <p class="text-[12px] text-mut mb-3 max-w-[76ch]">Si un formulario está deshabilitado, sus botones desaparecen y la base de datos rechaza la impresión aunque alguien intente forzarla.</p>
+      <div class="grid gap-2 sm:grid-cols-2">
+        <label v-for="f in [['permitir_individual','Formulario individual (lleno)','El que se imprime tras registrar, con los datos del postulante, para las firmas.'],['permitir_blanco','Formulario en blanco','Sin datos, para repartir y llenar a mano.']]" :key="f[0]"
+               class="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-colors"
+               :class="cfgDoc[f[0]] !== false ? 'border-fp-400 bg-fp-25' : 'border-line bg-white'">
+          <input type="checkbox" :checked="cfgDoc[f[0]] !== false" class="accent-fp-600 w-4 h-4 mt-0.5"
+                 @change="guardarCfgDoc(f[0], $event.target.checked)">
+          <span class="min-w-0">
+            <b class="text-[13.5px]">{{ f[1] }}</b>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">{{ f[2] }} · {{ cfgDoc[f[0]] !== false ? 'Habilitado' : 'Deshabilitado' }}</span>
+          </span>
+        </label>
+      </div>
+    </section>
 
     <section id="permisos-rol" class="card p-4 scroll-mt-20">
       <div class="flex flex-wrap items-baseline gap-2 mb-1">

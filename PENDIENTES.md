@@ -5,7 +5,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 ## Próximo
 
 1. **Aplicar fase 64** (encargado limitado a su municipio, también en la base). Esperado: 1 fila ok = true.
-3. **Aplicar fase 68** (avance por territorio en la lista de usuarios). Esperado: 1 fila `portal_kpi_usuarios`.
+3. **Aplicar fase 69** (formularios habilitados, aplicado en la base). Esperado: 1 fila con los dos valores en true.
 4. **Prueba de Francisca**, ronda 3 pendiente (permitir sin trámite) (autorizar → aprobar en Dirigencia; bloquear; permitir), con la configuración actual: alcance municipio, «Requiere autorización», encargado solo municipio.
 5. **Subir `dist`** al subdominio (Registrar, Asignación, Usuarios y menú cambiaron).
 6. **Probar el flujo completo** con el usuario administrador: asignar a Camilo (0129-00001) con la sugerencia preseleccionada; registrar una cédula de otro municipio con un usuario encargado (no admin) y ver que ahora pasa; en Gestión → Traslados activar «requiere autorización», registrar otra de otra provincia y ver que aparece en «Esperan autorización» y no cuenta; aprobarla en Dirigencia → Traslados y ver que pasa a contar.
@@ -41,6 +41,7 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Fase 63 aplicada; disparador `aa_p28_control_colegio` confirmado primero (23 sep 2026).
 - Fase 65 aplicada y confirmada en pantalla (Santo Domingo de Guzmán). Fase 64 aplicada. Prueba de Camilo ok (23 sep 2026).
 - Corregido: con «Preguntar en cada registro» el selector de colegio no aparecía para quien vota en el municipio.
+- Fase 68 aplicada; avance visible en usuarios. Orden por columnas en la lista de usuarios. Fase 69 escrita: formulario en blanco e individual habilitables desde Configuración y aplicados en la base (23 sep 2026).
 - Formulario impreso: bloque B imprime recinto, colegio, distrito y circunscripción del colegio asignado o solicitado. Lista de usuarios con avance (registrados de meta, %, colegios). Enlace de los mensajes cambiado a juntas.strategosfp.com (23 sep 2026).
 - Fases 66 y 67 aplicadas. Gestión reorganizada en pestañas (Usuarios · Asistente · Configuración), menos color, sin menciones a Supabase en pantalla; Ayuda actualizada con asignación y configuración (23 sep 2026).
 - Fase 67 escrita: bloquear / autorizar / permitir, límite del encargado parametrizado, permisos de asignación cerrados; tarjetas de Asignación activas (23 sep 2026).

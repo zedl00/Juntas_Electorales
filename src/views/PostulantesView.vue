@@ -35,7 +35,7 @@ import { sb } from '../lib/supabase';
 import { perfil, esAdmin, scopeAmplio, canRegister, permisos, velo } from '../stores/auth';
 import { regiones, provsOf, munsOf, nombreMun } from '../stores/catalogo';
 import { cargarKpi, cargarTerr } from '../stores/kpi';
-import { printIndividual, printRelacion, printBusy } from '../stores/print';
+import { printIndividual, printRelacion, printBusy, docsCfg } from '../stores/print';
 import { cargoLbl, cargoCorto, estadoLbl, estadoCls, nivelOpts } from '../lib/constantes';
 import { fmt, fmtCed, soloDig, edad, fecha, fechaHora } from '../lib/formato';
 import { t } from '../stores/toasts';
@@ -425,7 +425,7 @@ onActivated(() => { if (!route.query.mun) cargarPost(); });
         </div>
 
         <div class="p-4 border-t border-line flex flex-wrap justify-between gap-2 sticky bottom-0 bg-white rounded-b-2xl">
-          <button class="btn-o btn-s" @click="printIndividual(det)">⎙ Imprimir formulario</button>
+          <button v-if="docsCfg.permitir_individual" class="btn-o btn-s" @click="printIndividual(det)">⎙ Imprimir formulario</button>
           <div class="flex gap-2">
             <template v-if="canEditRow(det)">
               <button v-if="!detEdit" class="btn-o btn-s" @click="iniciarEdit">Editar</button>

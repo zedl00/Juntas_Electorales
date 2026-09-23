@@ -5,7 +5,7 @@ import { useRoute } from 'vue-router';
 import { sesion, perfil } from './stores/auth';
 import { cargarCat } from './stores/catalogo';
 import { refrescar } from './stores/kpi';
-import { printJob } from './stores/print';
+import { printJob, cargarDocsCfg } from './stores/print';
 import AppToasts from './components/AppToasts.vue';
 import TopBar from './components/TopBar.vue';
 import CintaAvance from './components/CintaAvance.vue';
@@ -18,7 +18,7 @@ import PrintOverlay from './components/PrintOverlay.vue';
 const route = useRoute();
 
 /* Al obtener perfil (login o sesión restaurada): cargar catálogo y KPI una sola vez */
-watch(perfil, p => { if (p) { cargarCat(); refrescar(); } }, { immediate: true });
+watch(perfil, p => { if (p) { cargarCat(); refrescar(); cargarDocsCfg(); } }, { immediate: true });
 </script>
 
 <template>

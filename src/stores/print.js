@@ -12,6 +12,13 @@ export const printSello = ref(null);
 /* Cierto cuando el documento se imprime sin marca por configuración */
 export const selloOmitido = ref(false);
 
+/* Formularios habilitados por la Comisión (fase 69). Se lee al iniciar sesión y al cambiar la configuración. */
+export const docsCfg = ref({ permitir_blanco: true, permitir_individual: true });
+export async function cargarDocsCfg() {
+  const { data } = await sb.from('config_documentos').select('permitir_blanco,permitir_individual').limit(1).maybeSingle();
+  if (data) docsCfg.value = { permitir_blanco: data.permitir_blanco !== false, permitir_individual: data.permitir_individual !== false };
+}
+
 /* Registra el documento en la bitácora y devuelve el sello de trazabilidad */
 export async function sellarImpresion(tipo, territorio, registros) {
   const { data, error } = await sb.rpc('portal_log_impresion', {

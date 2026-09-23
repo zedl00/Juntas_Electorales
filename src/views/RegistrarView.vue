@@ -6,7 +6,7 @@ import { sb } from '../lib/supabase';
 import { perfil, esAdmin, scopeAmplio, canRegister, verDistritos } from '../stores/auth';
 import { catMap, catGrupos, nombreMun } from '../stores/catalogo';
 import { cargarKpi, cargarTerr, cargarSinColegio } from '../stores/kpi';
-import { printIndividual, printBlanco } from '../stores/print';
+import { printIndividual, printBlanco, docsCfg } from '../stores/print';
 import { rolLbl, cargoLbl, estadoLbl, reqLbl, reqDet, nivelOpts, expTitulo, expLbl, trasladoLbl } from '../lib/constantes';
 import { fmt, fmtCed, soloDig, edad, cedulaValida, cedulaError } from '../lib/formato';
 import { t } from '../stores/toasts';
@@ -222,7 +222,7 @@ const imprimirBlanco = () => printBlanco(munReg.value || 0);
         <h2 class="font-serif text-xl font-bold">Registrar postulante</h2>
         <p class="text-[12.5px] text-mut mt-0.5">Preselección de delegados, suplentes y observadores de escrutinio.</p>
       </div>
-      <button class="btn-o btn-s shrink-0" @click="imprimirBlanco">⎙ Formulario en blanco</button>
+      <button v-if="docsCfg.permitir_blanco" class="btn-o btn-s shrink-0" @click="imprimirBlanco">⎙ Formulario en blanco</button>
     </div>
 
     <div v-if="!canRegister" class="warn">Tu rol de <b>{{ rolLbl[perfil?.rol] }}</b> tiene acceso de consulta. El registro en la plataforma corresponde al <b>Encargado(a) Electoral</b> del territorio, conforme al Instructivo.</div>
@@ -508,7 +508,7 @@ const imprimirBlanco = () => printBlanco(munReg.value || 0);
         <div class="font-serif text-3xl font-bold mt-2 inline-block border-2 border-dashed border-fp-300 rounded-xl px-5 py-2 bg-fp-25">Nº {{ regOk.numero_formulario }}</div>
         <div class="mt-2 text-sm">{{ regOk.nombres }} {{ regOk.apellido1 }} · {{ cargoLbl[regOk.cargo_postulado] }}</div>
         <div class="flex flex-wrap justify-center gap-2 mt-5">
-          <button class="btn-p" @click="printIndividual(regOk)">⎙ Imprimir formulario para firmas</button>
+          <button v-if="docsCfg.permitir_individual" class="btn-p" @click="printIndividual(regOk)">⎙ Imprimir formulario para firmas</button>
           <button class="btn-o" @click="resetReg">Registrar otro</button>
           <button class="btn-o" @click="router.push('/postulantes')">Ver listado</button>
         </div>
