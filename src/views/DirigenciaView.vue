@@ -122,7 +122,7 @@ const cargar = async () => {
   }
   nodos.value = data || [];
 };
-onMounted(() => { cargar(); if (vista.value === 'accesos') cargarAccesos(); });
+onMounted(() => { cargar(); if (vista.value === 'accesos') cargarAccesos(); if (vista.value === 'traslados') cargarTraslados(); });
 
 const actual = computed(() => ruta.value.length ? ruta.value[ruta.value.length - 1] : null);
 
@@ -338,7 +338,7 @@ const hijoTxt = n => n.nivel === 'provincia' ? 'municipios'
             <div class="rounded-lg bg-fp-25 border border-fp-100 px-3 py-2">
               <div class="text-[9.5px] font-bold uppercase tracking-wider text-fp-700">Trabajaría en</div>
               <div class="text-[13px] font-semibold">{{ r.trabaja_territorio }}</div>
-              <div class="text-[11.5px] text-mut">Colegio {{ r.trabaja_colegio || '—' }}</div>
+              <div class="text-[11.5px] text-mut">{{ r.trabaja_colegio ? 'Colegio ' + r.trabaja_colegio : 'Sin colegio elegido' }}</div>
             </div>
           </div>
 

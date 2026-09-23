@@ -11,7 +11,7 @@ import { t, copiar } from '../stores/toasts';
 import { cargarDocsCfg } from '../stores/print';
 
 const permRol = ref([]), permBusy = ref(false);
-const usrs = ref([]), uBusy = ref(false), uF = ref({ q: '', rol: '', prov: '', mun: '', jce: '', ambito: '' });
+const usrs = ref([]), uBusy = ref(false), uF = ref({ q: '', rol: '', prov: '', mun: '', jce: '', ambito: '', estado: '' });
 const showCrear = ref(false), cuBusy = ref(false), cuErr = ref(''), cuPend = ref(null), cuOk = ref(null);
 const cu = ref({ ced: '', lkpU: null, nombre: '', telefono: '', rol: 'enc_electoral', mun: 0, prov: 0, region: '', pin: genPin(), puedeImp: null });
 
@@ -93,6 +93,8 @@ const usrsFiltrados = computed(() => usrs.value.filter(u => {
     const a = u.jce_id ? 'distrito' : (u.municipio_id ? 'municipio' : (u.provincia_id ? 'provincia' : 'nacional'));
     if (a !== uF.value.ambito) return false;
   }
+  if (uF.value.estado === 'activos' && !u.activo) return false;
+  if (uF.value.estado === 'inactivos' && u.activo) return false;
   return true;
 }));
 
@@ -609,7 +611,8 @@ onMounted(() => { cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); c
       <select v-model.number="uF.mun" class="inp !py-2 text-[12.5px]"><option value="">Municipio: todos</option><option v-for="m in munsFiltro" :key="m.municipio_id" :value="m.municipio_id">{{ m.nombre }}</option></select>
       <select v-model.number="uF.jce" class="inp !py-2 text-[12.5px]" :disabled="!distsFiltro.length"><option value="">Distrito: todos</option><option v-for="d in distsFiltro" :key="d.jce_id" :value="d.jce_id">{{ d.nombre }}{{ d.es_dm ? ' · DM' : '' }}</option></select>
       <select v-model="uF.ambito" class="inp !py-2 text-[12.5px]"><option value="">Ámbito: todos</option><option value="provincia">Provincial</option><option value="municipio">Municipal</option><option value="distrito">Distrital</option></select>
-      <button class="btn-o btn-s" @click="uF = { q: '', rol: '', prov: '', mun: '', jce: '', ambito: '' }">Limpiar</button>
+      <select v-model="uF.estado" class="inp !py-2 text-[12.5px]"><option value="">Estado: todos</option><option value="activos">Solo activos</option><option value="inactivos">Solo inactivos</option></select>
+      <button class="btn-o btn-s" @click="uF = { q: '', rol: '', prov: '', mun: '', jce: '', ambito: '', estado: '' }">Limpiar</button>
     </div>
 
     <div v-if="solis.length" class="card overflow-hidden border-amber-200">
