@@ -37,11 +37,19 @@ En la pantalla de acceso, «¿Olvidaste tu PIN?» → cédula → Solicitar. La 
 
 Gestión → Usuarios → «Accesos por enviar» lista los PIN iniciales aún no entregados. «Enviar siguiente por WhatsApp» abre WhatsApp con el mensaje completo y, al volver, marca la entrega con nombre y hora. Los PIN vencidos no se envían: se regeneran primero. Cuando Meta habilite el canal automático, la misma bandeja enviará en lote.
 
+## Cómo entra la gente (fase 75)
+
+El plan Pro de Supabase no incluye el gancho de verificación de contraseña, así que el acceso pasa por una **función de servidor** propia («acceso»):
+
+1. Recibe cédula y PIN (y el token del captcha si está activo, que verifica con la clave secreta de Turnstile).
+2. Llama a `portal_acceso_verificar`, que comprueba bloqueos, verifica el PIN contra la base y **cuenta los fallos** con las reglas configuradas. Solo el rol de servicio puede llamarla.
+3. Si todo está bien, crea la sesión con un enlace de un solo uso y la devuelve al portal.
+
+Para que nadie rodee la función, el gancho **Customize Access Token** (disponible en Pro) niega la sesión a cualquier usuario del portal que entre por contraseña directa o que esté bloqueado. Se aplica también al refrescar sesiones, así que un bloqueo corta sesiones abiertas.
+
 ## Puesta en marcha (una sola vez, en el panel de la base de datos)
 
-La capa A necesita que Supabase llame al gancho:
-
-1. Panel de la base de datos → **Authentication → Hooks**.
-2. **Password Verification Attempt** → Enable → tipo **Postgres** → esquema `public` → función `portal_hook_verificacion_pin` → Save.
-
-Sin ese paso, la fase 74 está aplicada pero los intentos fallidos no se cuentan. Las capas B, C y D funcionan sin él.
+1. **Desplegar la función «acceso».** Edge Functions → Deploy a new function → nombre `acceso` → pegar el contenido de `supabase/functions/acceso/index.ts` → Deploy. En Edge Functions → Secrets añadir `EMAIL_DOM` = `@strategosfp.com` y, cuando exista el widget de Turnstile, `TURNSTILE_SECRET` con la Secret Key.
+2. **Gancho.** Authentication → Auth Hooks → Add hook → **Customize Access Token (JWT) Claims hook** → Postgres → esquema `public` → función `portal_hook_token` → Create hook. Debe quedar Enabled.
+3. **Captcha en el panel: apagado.** Authentication → Attack Protection → Captcha protection debe estar desactivado; lo verifica la función.
+4. Subir `dist` y probar el acceso. Las sesiones abiertas antes de este cambio tendrán que volver a entrar una vez.

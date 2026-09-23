@@ -4,8 +4,9 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-0b. **Activar el gancho en el panel**: Authentication → Hooks → Password Verification Attempt → Postgres → `public.portal_hook_verificacion_pin`. Sin esto no se cuentan los intentos fallidos.
-0c. **Probar con un usuario de prueba**: 5 PIN malos → bloqueo 15 min y aparece en «Usuarios bloqueados»; habilitar; entrar bien → modal de identidad → PIN personal → aviso amarillo de confirmación pendiente → confirmar en «Primeros ingresos por confirmar».
+0b. **Aplicar fase 75** (acceso por función de servidor; gancho de token). Esperado: 2 filas.
+0c. **Desplegar la función «acceso»** en Edge Functions con el secreto EMAIL_DOM, y crear el gancho **Customize Access Token** → `public.portal_hook_token`. Captcha del panel apagado. Pasos exactos en docs/SEGURIDAD_ACCESO.md.
+0d. **Probar con un usuario de prueba**: 5 PIN malos → bloqueo 15 min y aparece en «Usuarios bloqueados»; habilitar; entrar bien → modal de identidad → PIN personal → aviso amarillo de confirmación pendiente → confirmar en «Primeros ingresos por confirmar».
 0. **Aplicar fase 73** (quien vota en el exterior solo se registra desde una OCLEE). Esperado: 1 fila ok = true.
 1. **Limpieza de las pruebas**: borrar a Francisca (01200938577) y a 07100236442 con la consulta de limpieza, y dejar la configuración en: alcance municipio · «Requiere autorización» · encargado solo municipio · «Preguntar solo si vota fuera».
 2. **Subir `dist` al subdominio** (cambiaron Registrar, Asignación, Gestión, Dirigencia, Ayuda, menú e impresión) y comprobar en `juntas.strategosfp.com` que la versión y las pantallas coinciden con localhost.
@@ -38,6 +39,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Fase 75 escrita: el gancho de verificación de contraseña no existe en el plan Pro; el acceso pasa por la Edge Function «acceso» y el gancho Customize Access Token niega sesiones a bloqueados y a quien rodee la función (23 sep 2026).
 
 - Fase 74 aplicada. Gestión tiene pestaña «Accesos y seguridad» con cuatro bandejas plegables: solicitudes de PIN, bloqueados, primeros ingresos por confirmar, accesos por enviar (23 sep 2026).
 

@@ -80,16 +80,23 @@ export async function verificarIdentidad(fechaNac, municipioId) {
 
 /** Inicia sesión con cédula (o email de admin) + PIN. Devuelve mensaje de error o null. */
 export async function login(acceso, pin, captchaToken = '') {
-  const { data, error } = await sb.auth.signInWithPassword({
-    email: emailDe(acceso), password: pin,
-    ...(captchaToken ? { options: { captchaToken } } : {})
-  });
-  if (error) {
-    if (/intento|bloquead|venci/i.test(error.message)) return error.message;   // mensajes del control de intentos (fase 74)
-    if (/invalid login/i.test(error.message)) return 'Cédula o PIN incorrectos.';
-    if (/captcha/i.test(error.message)) return 'La base de datos exige la verificación de seguridad pero el portal la tiene desactivada. Administración: actívala en Gestión → Configuración → Seguridad del acceso.';
-    return 'No se pudo iniciar sesión: ' + error.message;
+  /* Fase 75: el acceso pasa por la función de servidor «acceso», que verifica el PIN,
+     cuenta los intentos con las reglas de la Comisión y crea la sesión. */
+  let r;
+  try {
+    const resp = await fetch(import.meta.env.VITE_SUPABASE_URL + '/functions/v1/acceso', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                 'Authorization': 'Bearer ' + import.meta.env.VITE_SUPABASE_ANON_KEY },
+      body: JSON.stringify({ acceso, pin, captcha: captchaToken || undefined })
+    });
+    r = await resp.json().catch(() => ({}));
+    if (!resp.ok || !r?.ok) return r?.msg || 'No se pudo iniciar sesión (' + resp.status + ').';
+  } catch (e) {
+    return 'No hay conexión con el servidor de acceso. Revisa tu internet e inténtalo de nuevo.';
   }
+  const { data, error } = await sb.auth.setSession({ access_token: r.access_token, refresh_token: r.refresh_token });
+  if (error || !data?.session) return 'No se pudo abrir la sesión: ' + (error?.message || '');
   sesion.value = data.session;
   const ok = await postLogin();
   return ok ? null : 'Acceso no habilitado.';

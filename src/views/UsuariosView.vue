@@ -1221,9 +1221,9 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
         <input v-model.trim="cfgSeg.captcha_site_key" class="inp font-mono text-[12.5px]" placeholder="0x4AAAAAAA…" autocomplete="off" spellcheck="false">
       </div>
       <p class="text-[11.5px] text-mut mt-3 leading-snug max-w-[76ch]">
-        Este interruptor va de la mano con la base de datos: allí se decide si el token es obligatorio
-        (panel de la base de datos → Authentication → Attack Protection → Captcha). Los dos deben estar iguales.
-        Si la base lo exige y aquí está apagado, nadie podrá entrar y el acceso mostrará un aviso claro.
+        La verificación la hace la función de acceso del servidor con la clave secreta de Turnstile
+        (secreto TURNSTILE_SECRET). Si no hay clave secreta configurada, el reto se muestra pero no se exige.
+        En el panel de la base de datos el captcha debe quedar apagado.
       </p>
       <div class="mt-5 pt-4 border-t border-line space-y-3">
         <p class="text-[13.5px] font-semibold">Capas de protección del acceso</p>
