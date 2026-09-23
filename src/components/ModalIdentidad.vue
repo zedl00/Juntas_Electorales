@@ -1,7 +1,7 @@
 <!-- src/components/ModalIdentidad.vue · verificación de identidad contra el padrón en el primer acceso (fase 74) -->
 <script setup>
 import { ref, computed } from 'vue';
-import { showIdent, verificarIdentidad, perfil } from '../stores/auth';
+import { showIdent, verificarIdentidad, perfil, logout } from '../stores/auth';
 import { cat } from '../stores/catalogo';
 import { t } from '../stores/toasts';
 
@@ -17,6 +17,8 @@ const verificar = async () => {
   if (e) { err.value = e; return; }
   t('Identidad verificada. ¡Bienvenido(a)!', 'ok');
 };
+/* Sin los datos a mano: entra solo a consultar; se vuelve a pedir en el próximo ingreso */
+const masTarde = () => { showIdent.value = false; t('Podrás consultar. Para registrar, verifica tu identidad en el próximo ingreso.', 'ok'); };
 </script>
 
 <template>
@@ -37,6 +39,11 @@ const verificar = async () => {
         </div>
         <div v-if="err" class="errbx text-[12.5px]">{{ err }}</div>
         <button class="btn-p w-full" :disabled="busy" @click="verificar">{{ busy ? 'Verificando…' : 'Verificar y continuar' }}</button>
+        <div class="flex gap-2">
+          <button class="btn-o flex-1 text-[12.5px]" :disabled="busy" @click="masTarde">Verificar más tarde · solo consulta</button>
+          <button class="btn-o text-[12.5px]" :disabled="busy" @click="logout">Salir</button>
+        </div>
+        <p class="text-[11px] text-mut leading-snug">Sin verificar no podrás registrar postulantes. Si los datos no coinciden tres veces, el acceso se bloquea y solo la Comisión lo habilita.</p>
       </div>
     </div>
   </div>
