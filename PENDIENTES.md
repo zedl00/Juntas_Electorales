@@ -29,6 +29,10 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 - **Prueba de carga** con 50 sesiones simuladas antes de la jornada.
 - **Producción anterior** (`electoral.strategosfp.com/delegados`, compilación del 28 ago): decidir si se apaga o redirige a `juntas`.
 
+## Regla aprendida
+
+- Las comprobaciones al final de una migración no pueden llamar funciones que exijan `portal_rol()`: el editor SQL no tiene sesión y el fallo revierte toda la migración.
+
 ## Hecho
 
 - v8.7.0: versión visible, `.htaccess` con cabeceras (verificado en servidor), captcha Turnstile con interruptor administrado, fases 58 a 60, paso Confirmar del registro muestra el colegio asignado, git iniciado.
