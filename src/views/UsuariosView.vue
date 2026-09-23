@@ -534,7 +534,7 @@ const cfgTr = ref({ alcance: 'municipio', excede_accion: 'autorizar', encargado_
 const cfgBusy = ref(false);
 
 /* ── Seguridad del acceso: captcha de Cloudflare (fase 60) ── */
-const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, pin_caduca_horas: 72, confirmar_sne: true });
+const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, identidad_campos: 'fecha', pin_caduca_horas: 72, confirmar_sne: true });
 const segBusy = ref(false);
 const cargarCfgSeg = async () => {
   const { data } = await sb.from('config_seguridad').select('*').limit(1).maybeSingle();
@@ -546,7 +546,7 @@ const guardarCfgSeg = async () => {
   const { error } = await sb.rpc('portal_config_seguridad_guardar', { p: {
     captcha_activo: !!c.captcha_activo, captcha_site_key: c.captcha_site_key || '',
     bloqueo_activo: !!c.bloqueo_activo, intentos_aviso: +c.intentos_aviso || 3, intentos_bloqueo: +c.intentos_bloqueo || 5,
-    bloqueo_minutos: +c.bloqueo_minutos || 15, verificar_padron: !!c.verificar_padron,
+    bloqueo_minutos: +c.bloqueo_minutos || 15, verificar_padron: !!c.verificar_padron, identidad_campos: c.identidad_campos || 'fecha',
     pin_caduca_horas: +c.pin_caduca_horas || 72, confirmar_sne: !!c.confirmar_sne
   } });
   segBusy.value = false;
@@ -1240,7 +1240,11 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
           <input type="checkbox" v-model="cfgSeg.verificar_padron" class="accent-fp-600 w-4 h-4 mt-0.5">
           <span class="min-w-0">
             <b class="text-[13.5px]">Verificar identidad con el padrón en el primer acceso</b>
-            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Antes de crear su PIN personal, la persona escribe su fecha de nacimiento y el municipio donde vota; se contrastan con el padrón. Tres fallos: bloqueo definitivo.</span>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Antes de crear su PIN personal, la persona responde con datos que solo ella conoce y que se contrastan con el padrón. Tres fallos: bloqueo definitivo. No aplica a la administración.</span>
+            <span class="flex flex-wrap gap-3 mt-2 text-[12px]" @click.stop>
+              <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="fecha" v-model="cfgSeg.identidad_campos" class="accent-fp-600"> Solo fecha de nacimiento <span class="text-mut">· ágil, recomendado</span></label>
+              <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="fecha_municipio" v-model="cfgSeg.identidad_campos" class="accent-fp-600"> Fecha de nacimiento y municipio donde vota</label>
+            </span>
           </span>
         </label>
 

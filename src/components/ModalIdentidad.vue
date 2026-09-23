@@ -6,6 +6,7 @@ import { cat } from '../stores/catalogo';
 import { t } from '../stores/toasts';
 
 const fnac = ref(''), mun = ref(0), busy = ref(false), err = ref('');
+const pideMun = computed(() => perfil.value?.identidad_campos === 'fecha_municipio');
 const muns = computed(() => [...cat.value].filter(m => m.tipo !== 'OCLEE').sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')));
 
 const verificar = async () => {
@@ -26,10 +27,10 @@ const masTarde = () => { showIdent.value = false; t('Podrás consultar. Para reg
     <div class="card w-full max-w-sm p-5">
       <div class="h-1 w-10 rounded-full bg-fp-600 mb-4"></div>
       <div class="font-serif font-bold text-[18px]">Confirma que eres tú</div>
-      <p class="text-[12.5px] text-mut mt-1 mb-4">Hola {{ perfil?.nombre }}. Antes de continuar, verificamos tu identidad con el padrón de la Junta. Tienes tres intentos.</p>
+      <p class="text-[12.5px] text-mut mt-1 mb-4">Hola {{ perfil?.nombre }}. Antes de continuar, verificamos tu identidad con el padrón de la Junta{{ pideMun ? ' con tu fecha de nacimiento y tu municipio' : ' con tu fecha de nacimiento' }}. Tienes tres intentos.</p>
       <div class="space-y-3">
         <div><label class="lbl">Tu fecha de nacimiento</label><input v-model="fnac" type="date" class="inp" autocomplete="off"></div>
-        <div>
+        <div v-if="pideMun">
           <label class="lbl">Municipio donde votas</label>
           <select v-model.number="mun" class="inp">
             <option :value="0">Elegir…</option>

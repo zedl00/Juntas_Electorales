@@ -19,7 +19,7 @@ Los tres números (aviso, bloqueo y minutos) son configurables. Un usuario bloqu
 
 ## Capa B · Verificación de identidad con el padrón
 
-En el primer ingreso, antes de crear el PIN personal, la persona escribe su **fecha de nacimiento** y el **municipio donde vota**. Se contrastan con el padrón de la Junta. Tres fallos: bloqueo definitivo y aviso en «Usuarios bloqueados». Si la cédula no está en el padrón cargado, se deja pasar y queda marcada para la confirmación de la SNE. Quien reciba un PIN por error no conoce esos datos.
+En el primer ingreso, antes de crear el PIN personal, la persona escribe su **fecha de nacimiento** y, si la Comisión lo configuró («Fecha de nacimiento y municipio»), el **municipio donde vota**. Por defecto se pide solo la fecha, que es lo más ágil. Se contrastan con el padrón de la Junta. La administración de la SNE nunca pasa por esta verificación (fase 76). Tres fallos: bloqueo definitivo y aviso en «Usuarios bloqueados». Si la cédula no está en el padrón cargado, se deja pasar y queda marcada para la confirmación de la SNE. Quien reciba un PIN por error no conoce esos datos.
 
 ## Capa C · PIN inicial de un solo uso con caducidad
 

@@ -53,6 +53,17 @@ import { reqLbl } from '../lib/constantes';
       </details>
 
       <details class="card acc">
+        <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Tu primer ingreso, paso a paso</summary>
+        <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
+          <p><b>1 · Entra con tu cédula y el PIN inicial</b> que recibiste por WhatsApp. Ese PIN es de un solo uso y vence a los tres días; si venció, pide otro con «¿Olvidaste tu PIN?».</p>
+          <p><b>2 · Confirma que eres tú.</b> El sistema te pide tu fecha de nacimiento (y, si la Comisión lo configuró, el municipio donde votas) y la compara con el padrón de la Junta. Tienes tres intentos; si no coinciden, el acceso se bloquea y solo la Comisión lo habilita. Si no tienes los datos a mano, «Verificar más tarde» te deja entrar solo a consultar.</p>
+          <p><b>3 · Crea tu PIN personal.</b> Mínimo 6 caracteres. Desde ese momento solo tú lo conoces.</p>
+          <p><b>4 · La Comisión confirma tu acceso.</b> Verás un aviso amarillo mientras tanto: puedes consultar, y podrás registrar cuando la SNE confirme tu identidad, normalmente el mismo día.</p>
+          <p class="text-[12px] text-mut"><b>Si te equivocas de PIN:</b> a partir del tercer fallo el sistema te dice cuántos intentos te quedan; al quinto bloquea el acceso 15 minutos. Si vuelve a pasar, el bloqueo es definitivo y lo levanta la Comisión desde Gestión → Accesos y seguridad.</p>
+        </div>
+      </details>
+
+      <details class="card acc">
         <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Instala la app en tu teléfono</summary>
         <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-3">
           <p>El portal se instala como una aplicación, con su ícono FP en tu pantalla de inicio — sin tiendas ni descargas pesadas.</p>

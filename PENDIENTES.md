@@ -4,6 +4,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
+0. **Levantar el bloqueo del administrador** (consulta de desbloqueo) y **aplicar fase 76** (identidad parametrizable, administración exenta). Esperado: 1 fila `identidad_campos = fecha`.
 0b. **Subir `dist` al subdominio YA**: con el gancho activo, el código publicado (viejo) no puede iniciar sesión.
 0d. **Probar con un usuario de prueba**: 5 PIN malos → bloqueo 15 min y aparece en «Usuarios bloqueados»; habilitar; entrar bien → modal de identidad → PIN personal → aviso amarillo de confirmación pendiente → confirmar en «Primeros ingresos por confirmar».
 0. **Aplicar fase 73** (quien vota en el exterior solo se registra desde una OCLEE). Esperado: 1 fila ok = true.

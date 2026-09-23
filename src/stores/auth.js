@@ -64,7 +64,7 @@ export async function postLogin() {
   if (p) await cargarPermisos();
   if (!p) { t('Tu cuenta no tiene perfil en el Portal de Delegados. Contacta a la Comisión.', 'err'); await sb.auth.signOut(); sesion.value = null; return false; }
   if (!p.activo) { t('Tu acceso está desactivado. Contacta a la Comisión.', 'err'); await sb.auth.signOut(); sesion.value = null; perfil.value = null; return false; }
-  showIdent.value = !!p.verificar_identidad;   // primero identidad, después el PIN personal
+  showIdent.value = !!p.verificar_identidad && p.rol !== 'admin_sne';   // primero identidad, después el PIN personal; la administración nunca
   showPin.value = !!p.primer_acceso;
   return true;
 }
