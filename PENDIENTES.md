@@ -4,8 +4,9 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-1. **Asignar colegio al formulario 0129-00001** desde la pantalla Asignación (es el único sin `colegio_asignado`; vota en un colegio del municipio 12 y se registró en el 129). Al hacerlo, Incompletos pasa de 4 a 5.
-2. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
+1. **Decidir el modelo de asignación**: leer `docs/ASIGNACION_DE_COLEGIOS.md` y elegir Opción 1 (el alcance configurado manda) u Opción 2 (solo admin registra fuera del municipio). Con la decisión se escribe la fase 63.
+2. **Asignar colegio a Camilo Moreta Roa (0129-00001)** en Asignación → botón «Asignar en Juan de Herrera». Incompletos pasa a 5.
+3. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
 
 Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde GitHub Desktop después de cada sesión.
 
@@ -16,7 +17,7 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Pendiente
 
-- **Fase 63 · control formal del colegio en el registro**: disparador `before insert/update` en `postulantes_2028` que verifique que `colegio_asignado` pertenece al municipio, recalcule los datos del padrón en la base y proteja `traslado_estado`, `autorizado_por` y columnas sensibles para quien no sea admin.
+- **Fase 63 · control formal del colegio en el registro** (depende de la decisión del punto 1 de Próximo; hallazgo: hoy el alcance configurado es solo informativo, el encargado nunca puede registrar fuera de su municipio): disparador `before insert/update` en `postulantes_2028` que verifique que `colegio_asignado` pertenece al municipio, recalcule los datos del padrón en la base y proteja `traslado_estado`, `autorizado_por` y columnas sensibles para quien no sea admin.
 - **Fase 64 · función definer para Strategos** (`padron_buscar`, `padron_resumen_municipio`, `padron_por_cedula`) y retirar de nuevo el `select` de `jce_padron` a `authenticated`.
 - **Solicitud de PIN rota**: el botón «Solicitar» de «¿Olvidaste tu PIN?» llama a `portal_delegados_solicitar_pin`, que no existe; muestra éxito sin guardar nada. Diseñar autoservicio: cédula + código de un solo uso por WhatsApp/Telegram + PIN nuevo.
 - **`autorizado_por` semántico**: hoy lleva el nombre de quien registra aunque no hubo autorización. Decidir si se vacía cuando el estado es «permitido».

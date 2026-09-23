@@ -1,0 +1,78 @@
+# Asignación de colegios · cómo funciona y qué casos cubre
+
+Documento de referencia para la Comisión. Estado al 23 de septiembre de 2026 (v8.7.0).
+
+## 1. Dos territorios por persona
+
+Cada postulante tiene dos lugares distintos, y el sistema los guarda por separado:
+
+| Concepto | Campo | Quién lo decide | Cambia |
+|---|---|---|---|
+| **Dónde vota** | `id_colegio_padron`, `municipio_padron_id` | La Junta Central Electoral (padrón) | Nunca |
+| **Dónde trabajará** | `colegio_asignado`, `municipio_id` | El partido, al registrar o al asignar | Sí |
+
+**Solo el colegio donde trabajará cuenta para la cobertura.** Un colegio está cubierto cuando tiene tres personas asignadas. El colegio donde vota es un dato de referencia y aparece en el formulario impreso, pero no suma en ninguna tarjeta.
+
+## 2. Las dos reglas, que son distintas
+
+**Regla A · Alcance del traslado (parametrizable).** Hasta dónde puede alejarse una persona del colegio donde vota. Se configura en Gestión → Usuarios → Traslados entre demarcaciones, con cuatro niveles: solo su colegio, su municipio, su provincia, libre. Además se decide si lo que exceda requiere autorización de la SNE. Esto es lo que antes estaba en «provincia».
+
+**Regla B · Territorio del colegio de trabajo (fija).** El colegio asignado debe pertenecer al municipio donde se registró a la persona. No es configurable, y no conviene que lo sea: el encargado de un municipio registra gente para cubrir los colegios de su municipio, y el desplegable solo ofrece esos colegios. La función `portal_reasignar_colegio` lo verifica en la base.
+
+Las dos reglas se combinan así: la Regla A decide **si** una persona que vota en un sitio puede registrarse en otro; la Regla B decide **qué colegios** puede recibir una vez registrada.
+
+## 3. El caso de Camilo Moreta Roa (0129-00001)
+
+- Vota en San Juan de la Maguana, colegio 0159.
+- Fue registrado por el encargado de Juan de Herrera, un municipio distinto de la misma provincia.
+- Se registró antes de la v8.6, cuando el campo «colegio asignado» no existía.
+
+¿Por qué no tiene colegio? Porque su colegio del padrón está en San Juan de la Maguana, y por la Regla B no puede trabajar ahí: lo registró Juan de Herrera para cubrir Juan de Herrera. El sistema no puede adivinar en cuál de los colegios de Juan de Herrera lo quieren, así que lo deja «esperando asignación». Antes de la v8.6 estas personas no contaban en ningún sitio; ahora aparecen en la pantalla Asignación para que alguien les dé colegio.
+
+Si se hubiera registrado hoy, con la configuración actual (alcance provincia, sin autorización), el registro le habría pedido elegir el colegio de Juan de Herrera en el mismo momento y no habría llegado a Asignación.
+
+## 4. Matriz de casos
+
+Con la configuración actual: alcance «provincia», sin autorización obligatoria.
+
+| Caso | Vota en | Se registra en | Regla A | Qué pasa al registrar | Colegio de trabajo |
+|---|---|---|---|---|---|
+| 1 | Colegio X del municipio M | M | Mismo colegio | Registro normal | X, automático |
+| 2 | Colegio X del municipio M | M, pero conviene otro colegio | Mismo municipio | Registro normal | X automático; se cambia luego en Asignación |
+| 3 | Municipio M | Municipio N, misma provincia | Misma provincia: permitido | Hoy: **solo el administrador** puede registrarlo (ver §6) | Elegido en el registro entre los colegios de N |
+| 4 | Municipio M | Municipio N, otra provincia | Otra provincia: excede | Hoy: solo el administrador; queda «permitido» porque no se exige autorización | Elegido entre los colegios de N |
+| 5 | Igual que 4, con autorización obligatoria activada | | Excede | Queda con traslado «pendiente» y aparece en Dirigencia → Traslados para aprobar o rechazar | Elegido entre los colegios de N |
+| 6 | Cualquiera | Oficina OCLEE del exterior | No aplica | Registro normal, sin verificación de demarcación | Colegio de la OCLEE |
+| 7 | No aparece en el padrón | Cualquiera | No aplica | Registro manual, pendiente de verificación | Elegido en el registro |
+| 8 | Registrado antes de la v8.6 fuera de su municipio | | | Sin colegio | Se asigna en la pantalla Asignación |
+
+## 5. Dónde se aplica cada regla hoy
+
+| Control | Pantalla | Función de la base | Base de datos (trigger o política) |
+|---|---|---|---|
+| Colegio de trabajo dentro del municipio de registro | Sí, el desplegable solo lista esos colegios | Sí, en `portal_reasignar_colegio` | **No** en el registro inicial: el cliente puede enviar cualquier `colegio_asignado` |
+| Alcance del traslado | Sí, calcula nivel y estado | Sí, en `portal_evaluar_traslado` | **No**: el cliente envía `traslado_nivel` y `traslado_estado`; la base los acepta |
+| Solo el administrador registra fuera del municipio | Sí | No | No |
+| Aprobación de traslados pendientes | Dirigencia → Traslados | Sí, `portal_traslado_resolver` | Sí, solo admin |
+| Persona pendiente de autorización no debería contar | **No**: cuenta desde que tiene colegio asignado | | |
+
+## 6. Hallazgo: la Regla A hoy es solo informativa
+
+En la pantalla de registro, un encargado que busca una cédula que vota en otro municipio recibe «No pertenece a esta demarcación» y no puede continuar, **sin importar** el alcance configurado. Solo el administrador ve la casilla «Registrar de todos modos». El alcance configurado solo cambia el estado que se guarda y el mensaje. Es decir, la configuración «provincia» promete traslados entre municipios sin trámite, pero el encargado no puede hacerlos.
+
+## 7. Opciones para fortalecer, a decidir por la Comisión
+
+**Opción 1 · Que la Regla A mande de verdad (recomendada).**
+Si el traslado está dentro del alcance, cualquier usuario con permiso de registro puede registrar a la persona, eligiendo obligatoriamente el colegio de trabajo. Si excede el alcance y no se exige autorización, también. Si excede y se exige autorización, el registro se guarda como «pendiente», no cuenta para la cobertura hasta que la SNE lo apruebe, y aparece en Dirigencia → Traslados. El administrador conserva su capacidad de registrar cualquier caso.
+
+**Opción 2 · Mantener el bloqueo actual.**
+Solo el administrador registra fuera del municipio. La configuración de alcance se reduce a clasificar los casos que el administrador aprueba. Más restrictivo; concentra ese trabajo en la SNE.
+
+**En cualquiera de las dos, hace falta la fase 63:** un disparador en `postulantes_2028` que en la base, y no en la pantalla, verifique que el colegio asignado pertenece al municipio de registro, calcule el nivel y el estado del traslado con `portal_evaluar_traslado`, rechace lo que la configuración no permita, y proteja `traslado_estado`, `autorizado_por` y los datos del padrón para que nadie que no sea administrador los cambie. Sin eso, todo lo anterior se puede saltar llamando a la API directamente.
+
+**Mejoras de la pantalla Asignación, independientes de la decisión:**
+
+- Reasignar a quien ya tiene colegio (mover gente entre colegios del mismo municipio).
+- Preseleccionar el colegio del propio recinto de la persona cuando le faltan personas.
+- Contador de «esperan colegio» junto a Asignación en el menú.
+- Que una persona con traslado «pendiente» se vea marcada y no cuente hasta la aprobación.
