@@ -4,6 +4,9 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
+0a. **Aplicar fase 74** (seguridad del acceso en cuatro capas). Esperado: 1 fila con siete columnas de configuración.
+0b. **Activar el gancho en el panel**: Authentication → Hooks → Password Verification Attempt → Postgres → `public.portal_hook_verificacion_pin`. Sin esto no se cuentan los intentos fallidos.
+0c. **Probar con un usuario de prueba**: 5 PIN malos → bloqueo 15 min y aparece en «Usuarios bloqueados»; habilitar; entrar bien → modal de identidad → PIN personal → aviso amarillo de confirmación pendiente → confirmar en «Primeros ingresos por confirmar».
 0. **Aplicar fase 73** (quien vota en el exterior solo se registra desde una OCLEE). Esperado: 1 fila ok = true.
 1. **Limpieza de las pruebas**: borrar a Francisca (01200938577) y a 07100236442 con la consulta de limpieza, y dejar la configuración en: alcance municipio · «Requiere autorización» · encargado solo municipio · «Preguntar solo si vota fuera».
 2. **Subir `dist` al subdominio** (cambiaron Registrar, Asignación, Gestión, Dirigencia, Ayuda, menú e impresión) y comprobar en `juntas.strategosfp.com` que la versión y las pantallas coinciden con localhost.
@@ -22,10 +25,9 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 - **Fase 63 · control formal del colegio en el registro** (depende de la decisión del punto 1 de Próximo; hallazgo: hoy el alcance configurado es solo informativo, el encargado nunca puede registrar fuera de su municipio): disparador `before insert/update` en `postulantes_2028` que verifique que `colegio_asignado` pertenece al municipio, recalcule los datos del padrón en la base y proteja `traslado_estado`, `autorizado_por` y columnas sensibles para quien no sea admin.
 - **Fase 64 · función definer para Strategos** (`padron_buscar`, `padron_resumen_municipio`, `padron_por_cedula`) y retirar de nuevo el `select` de `jce_padron` a `authenticated`.
-- **Solicitud de PIN rota**: el botón «Solicitar» de «¿Olvidaste tu PIN?» llama a `portal_delegados_solicitar_pin`, que no existe; muestra éxito sin guardar nada. Diseñar autoservicio: cédula + código de un solo uso por WhatsApp/Telegram + PIN nuevo.
 - **Listado de Postulantes** no muestra el colegio asignado.
 - **Sesión en el navegador**: decidir memoria pura (documento de seguridad) o persistencia con caducidad por inactividad.
-- **PIN inicial de 6 dígitos**: exigir PIN personal de 8 o más caracteres.
+- **PIN personal de 8 o más caracteres** (hoy el mínimo es 6).
 - **Documentos de seguridad**: corregir la columna «Estado» (Cloudflare, MFA, RLS por defecto y sesión en memoria no están implementados aún).
 - **Despliegue**: subir `dist` completo al subdominio con `.htaccess`; borrar chunks viejos de `assets`.
 - **Prueba de carga** con 50 sesiones simuladas antes de la jornada.
@@ -37,6 +39,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Fase 74 escrita: bloqueo por intentos (gancho de Auth), verificación con el padrón, PIN con caducidad, confirmación de la SNE, «¿Olvidaste tu PIN?» reconstruido, bandeja de envío de accesos, todo parametrizable en Configuración. Documentado en docs/SEGURIDAD_ACCESO.md (23 sep 2026).
 
 - Confirmado con la cédula 00100256783: «E» = vota en el exterior y el colegio del padrón es el de origen. Fase 73 escrita. WhatsApp enmascarado igual que el teléfono en Postulantes (23 sep 2026).
 

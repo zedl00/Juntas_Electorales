@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { showPin, guardarPin } from '../stores/auth';
+import { showPin, showIdent, guardarPin } from '../stores/auth';
 import { t } from '../stores/toasts';
 
 const np1 = ref(''), np2 = ref(''), pinBusy = ref(false), pinErr = ref('');
@@ -19,7 +19,7 @@ const guardar = async () => {
 </script>
 
 <template>
-  <div v-if="showPin" class="modal fixed inset-0 z-[70] bg-ink/50 p-4 flex items-center justify-center">
+  <div v-if="showPin && !showIdent" class="modal fixed inset-0 z-[70] bg-ink/50 p-4 flex items-center justify-center">
     <div class="card w-full max-w-sm p-5">
       <div class="h-1 w-10 rounded-full bg-fp-600 mb-4"></div>
       <div class="font-serif font-bold text-[18px]">Crea tu PIN personal</div>

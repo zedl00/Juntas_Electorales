@@ -13,7 +13,7 @@ const loginBusy = ref(false), loginErr = ref('');
 const pedirPin = ref(false), cedPin = ref(''), pinBusy = ref(false), okPin = ref('');
 const solicitarPin = async () => {
   pinBusy.value = true;
-  const { data } = await sb.rpc('portal_delegados_solicitar_pin', { p_cedula: cedPin.value });
+  const { data } = await sb.schema('public').rpc('portal_solicitar_pin', { p_cedula: cedPin.value });
   pinBusy.value = false;
   okPin.value = data?.mensaje || 'Solicitud enviada. La Comisión se comunicará contigo.';
   cedPin.value = '';

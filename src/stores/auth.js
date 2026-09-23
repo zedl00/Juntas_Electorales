@@ -8,6 +8,7 @@ import { t } from './toasts';
 export const sesion = ref(null);
 export const perfil = ref(null);
 export const showPin = ref(false);   // primer ingreso: obliga a crear PIN personal
+export const showIdent = ref(false); // primer ingreso: verificación de identidad contra el padrón (fase 74)
 
 /* ── Derivados de perfil ── */
 export const esAdmin = computed(() => perfil.value?.rol === 'admin_sne');
@@ -51,7 +52,7 @@ export const ribbon = computed(() => {
 const emailDe = acc => acc.includes('@') ? acc.trim().toLowerCase() : (soloDig(acc) + EMAIL_DOM);
 
 async function cargarPerfil() {
-  const { data, error } = await sb.rpc('portal_mi_perfil');
+  const { data, error } = await sb.rpc('portal_mi_perfil', { p_agente: typeof navigator !== 'undefined' ? navigator.userAgent : null });
   if (error) { t('Error cargando tu perfil', 'err'); return null; }
   perfil.value = data;
   return data;
@@ -63,8 +64,18 @@ export async function postLogin() {
   if (p) await cargarPermisos();
   if (!p) { t('Tu cuenta no tiene perfil en el Portal de Delegados. Contacta a la Comisión.', 'err'); await sb.auth.signOut(); sesion.value = null; return false; }
   if (!p.activo) { t('Tu acceso está desactivado. Contacta a la Comisión.', 'err'); await sb.auth.signOut(); sesion.value = null; perfil.value = null; return false; }
+  showIdent.value = !!p.verificar_identidad;   // primero identidad, después el PIN personal
   showPin.value = !!p.primer_acceso;
   return true;
+}
+
+/** Verificación de identidad contra el padrón (fase 74). Devuelve mensaje de error o null. */
+export async function verificarIdentidad(fechaNac, municipioId) {
+  const { data, error } = await sb.rpc('portal_verificar_identidad', { p_fecha_nac: fechaNac, p_municipio_id: municipioId || null });
+  if (error) return 'No se pudo verificar: ' + error.message;
+  if (data?.ok) { showIdent.value = false; if (perfil.value) perfil.value.verificar_identidad = false; return null; }
+  if (data?.bloqueado) { t(data.msg, 'err'); await sb.auth.signOut(); setTimeout(() => location.reload(), 2500); return data.msg; }
+  return data?.msg || 'Los datos no coinciden.';
 }
 
 /** Inicia sesión con cédula (o email de admin) + PIN. Devuelve mensaje de error o null. */
@@ -74,6 +85,7 @@ export async function login(acceso, pin, captchaToken = '') {
     ...(captchaToken ? { options: { captchaToken } } : {})
   });
   if (error) {
+    if (/intento|bloquead|venci/i.test(error.message)) return error.message;   // mensajes del control de intentos (fase 74)
     if (/invalid login/i.test(error.message)) return 'Cédula o PIN incorrectos.';
     if (/captcha/i.test(error.message)) return 'La base de datos exige la verificación de seguridad pero el portal la tiene desactivada. Administración: actívala en Gestión → Configuración → Seguridad del acceso.';
     return 'No se pudo iniciar sesión: ' + error.message;

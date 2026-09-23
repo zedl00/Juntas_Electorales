@@ -318,6 +318,41 @@ const tgBaja = async (w) => {
 };
 
 const solis = ref([]);
+/* ── Bandejas de seguridad (fase 74): bloqueados · por confirmar · accesos por enviar ── */
+const bloqueados = ref([]), porConfirmar = ref([]), pinesEnviar = ref([]), segAccion = ref('');
+const cargarBandejas = async () => {
+  const [b, c, e] = await Promise.all([
+    sb.rpc('portal_bloqueados'), sb.rpc('portal_accesos_por_confirmar'), sb.rpc('portal_pines_por_enviar')
+  ]);
+  bloqueados.value = b.data || []; porConfirmar.value = c.data || []; pinesEnviar.value = e.data || [];
+};
+const desbloquear = async b => {
+  segAccion.value = b.id;
+  const { data, error } = await sb.rpc('portal_desbloquear', { p_id: b.id });
+  segAccion.value = '';
+  if (error || !data?.ok) { t('No se pudo habilitar: ' + (error?.message || data?.msg), 'err'); return; }
+  t(b.nombre + ' habilitado(a)', 'ok'); cargarBandejas(); cargarUsrs();
+};
+const confirmarAcceso = async (c, ok) => {
+  const nota = ok ? null : (prompt('Motivo (opcional) para desactivar el acceso de ' + c.nombre + ':') || null);
+  if (!ok && nota === null && !confirm('¿Desactivar el acceso de ' + c.nombre + '?')) return;
+  segAccion.value = c.id;
+  const { data, error } = await sb.rpc('portal_confirmar_acceso', { p_id: c.id, p_ok: ok, p_nota: nota });
+  segAccion.value = '';
+  if (error || !data?.ok) { t('No se pudo: ' + (error?.message || data?.msg), 'err'); return; }
+  t(ok ? 'Identidad confirmada: ' + c.nombre : 'Acceso desactivado: ' + c.nombre, 'ok'); cargarBandejas(); cargarUsrs();
+};
+/* Enviar siguiente: abre WhatsApp con el mensaje de acceso y marca el PIN como entregado */
+const enviarPin = async r => {
+  if (r.vencido) { t('Ese PIN venció: regenera uno nuevo con «↺ PIN nuevo» en la lista de usuarios.', 'err'); return; }
+  if (!r.telefono) { t('Esa persona no tiene teléfono registrado.', 'err'); return; }
+  window.open(waLink(r.telefono, accessMsg(r.nombre, r.rol, r.territorio || '', fmtCed(r.cedula), r.pin)), '_blank');
+  const { error } = await sb.rpc('portal_pin_entregado', { p_cedula: r.cedula });
+  if (error) { t('Enviado, pero no se pudo marcar: ' + error.message, 'err'); return; }
+  t('Marcado como enviado: ' + r.nombre, 'ok'); cargarBandejas();
+};
+const enviarSiguiente = () => { const r = pinesEnviar.value.find(x => !x.vencido && x.telefono); if (r) enviarPin(r); else t('No queda nadie por enviar.', 'ok'); };
+
 const cargarSolis = async () => {
   const { data } = await sb.rpc('portal_solicitudes_pin');
   solis.value = data || [];
@@ -495,7 +530,7 @@ const cfgTr = ref({ alcance: 'municipio', excede_accion: 'autorizar', encargado_
 const cfgBusy = ref(false);
 
 /* ── Seguridad del acceso: captcha de Cloudflare (fase 60) ── */
-const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '' });
+const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, pin_caduca_horas: 72, confirmar_sne: true });
 const segBusy = ref(false);
 const cargarCfgSeg = async () => {
   const { data } = await sb.from('config_seguridad').select('*').limit(1).maybeSingle();
@@ -503,12 +538,16 @@ const cargarCfgSeg = async () => {
 };
 const guardarCfgSeg = async () => {
   segBusy.value = true;
-  const { error } = await sb.rpc('portal_config_seguridad_set', {
-    p_captcha: cfgSeg.value.captcha_activo, p_site_key: cfgSeg.value.captcha_site_key
-  });
+  const c = cfgSeg.value;
+  const { error } = await sb.rpc('portal_config_seguridad_guardar', { p: {
+    captcha_activo: !!c.captcha_activo, captcha_site_key: c.captcha_site_key || '',
+    bloqueo_activo: !!c.bloqueo_activo, intentos_aviso: +c.intentos_aviso || 3, intentos_bloqueo: +c.intentos_bloqueo || 5,
+    bloqueo_minutos: +c.bloqueo_minutos || 15, verificar_padron: !!c.verificar_padron,
+    pin_caduca_horas: +c.pin_caduca_horas || 72, confirmar_sne: !!c.confirmar_sne
+  } });
   segBusy.value = false;
   if (error) { t('No se pudo guardar: ' + error.message, 'err'); cargarCfgSeg(); return; }
-  t(cfgSeg.value.captcha_activo ? 'Captcha activado en el acceso' : 'Captcha desactivado en el acceso', 'ok');
+  t('Seguridad del acceso guardada', 'ok');
   cargarCfgSeg();
 };
 
@@ -575,7 +614,7 @@ const guardarPermRol = async (r, campo, valor) => {
   t('Permiso actualizado', 'ok');
 };
 
-onMounted(() => { cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol(); cargarUsrs(); cargarSolis(); cargarWa(); cargarTg(); });
+onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol(); cargarUsrs(); cargarSolis(); cargarWa(); cargarTg(); });
 </script>
 
 <template>
@@ -635,6 +674,64 @@ onMounted(() => { cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); c
         </tbody>
       </table>
       <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Solicitadas desde la pantalla de acceso. Al restablecer, la solicitud se cierra sola.</div>
+    </div>
+
+    <!-- ══ Usuarios bloqueados (fase 74) ══ -->
+    <div v-if="bloqueados.length" class="card overflow-hidden border-red-200">
+      <div class="p-4 border-b border-line bg-red-50/60 flex items-center gap-2">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Usuarios bloqueados</h3>
+        <span class="badge border-red-300 bg-red-100 text-red-900">{{ bloqueados.length }}</span>
+        <button class="btn-o btn-s" @click="cargarBandejas">Actualizar</button>
+      </div>
+      <table class="w-full"><tbody>
+        <tr v-for="b in bloqueados" :key="b.id" class="border-b border-line/60">
+          <td class="td font-semibold">{{ b.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(b.cedula) }} · {{ rolLbl[b.rol] || b.rol }}</span></td>
+          <td class="td text-[12px]">
+            <span class="badge" :class="b.tipo === 'definitivo' ? 'border-red-300 bg-red-50 text-red-800' : 'border-amber-300 bg-amber-50 text-amber-800'">{{ b.tipo === 'definitivo' ? 'Bloqueo definitivo' : 'Temporal hasta ' + fechaHora(b.hasta) }}</span>
+            <span v-if="b.motivo" class="block text-[11px] text-mut mt-0.5">{{ b.motivo }}</span>
+          </td>
+          <td class="td text-right whitespace-nowrap"><button class="btn-p btn-s" :disabled="segAccion === b.id" @click="desbloquear(b)">Habilitar</button></td>
+        </tr>
+      </tbody></table>
+      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Habilitar pone los intentos en cero y levanta el bloqueo. Queda en la bitácora.</div>
+    </div>
+
+    <!-- ══ Accesos por confirmar (fase 74) ══ -->
+    <div v-if="porConfirmar.length" class="card overflow-hidden border-sky-200">
+      <div class="p-4 border-b border-line bg-sky-50/60 flex items-center gap-2">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Primeros ingresos por confirmar</h3>
+        <span class="badge border-sky-300 bg-sky-100 text-sky-900">{{ porConfirmar.length }}</span>
+        <button class="btn-o btn-s" @click="cargarBandejas">Actualizar</button>
+      </div>
+      <table class="w-full"><tbody>
+        <tr v-for="c in porConfirmar" :key="c.id" class="border-b border-line/60">
+          <td class="td font-semibold">{{ c.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(c.cedula) }} · {{ rolLbl[c.rol] || c.rol }} · {{ c.territorio }}</span></td>
+          <td class="td text-[12px] text-mut">Entró {{ fechaHora(c.primer_ingreso_en) }}<span v-if="c.telefono"> · {{ fmtTel(c.telefono) }}</span>
+            <span class="block text-[11px]" :class="c.verificado ? 'text-fp-700' : 'text-amber-700'">{{ c.verificado ? '✓ Verificó su identidad con el padrón' : 'Aún no verifica identidad con el padrón' }}</span></td>
+          <td class="td text-right whitespace-nowrap">
+            <button class="btn-p btn-s" :disabled="segAccion === c.id" @click="confirmarAcceso(c, true)">Confirmar identidad</button>
+            <button class="btn-o btn-s ml-1" :disabled="segAccion === c.id" @click="confirmarAcceso(c, false)">Desactivar</button>
+          </td>
+        </tr>
+      </tbody></table>
+      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Llama a la persona y confirma que es quien debe ser. Hasta que confirmes, puede consultar pero no registrar.</div>
+    </div>
+
+    <!-- ══ Accesos por enviar (fase 74) ══ -->
+    <div v-if="pinesEnviar.length" class="card overflow-hidden border-fp-200">
+      <div class="p-4 border-b border-line bg-fp-25 flex flex-wrap items-center gap-2">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Accesos por enviar</h3>
+        <span class="chip">{{ pinesEnviar.length }} pendientes · {{ pinesEnviar.filter(x => x.vencido).length }} vencidos</span>
+        <button class="btn-p btn-s" @click="enviarSiguiente">📱 Enviar siguiente por WhatsApp</button>
+      </div>
+      <table class="w-full"><tbody>
+        <tr v-for="r in pinesEnviar.slice(0, 50)" :key="r.cedula" class="border-b border-line/60">
+          <td class="td font-semibold">{{ r.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(r.cedula) }} · {{ rolLbl[r.rol] || r.rol }} · {{ r.territorio }}</span></td>
+          <td class="td text-[12px] text-mut whitespace-nowrap">{{ r.telefono ? fmtTel(r.telefono) : 'sin teléfono' }}<span v-if="r.vencido" class="badge border-red-200 bg-red-50 text-red-700 ml-1">PIN vencido</span><span v-else class="block text-[10.5px]">vence {{ fechaHora(r.caduca_en) }}</span></td>
+          <td class="td text-right whitespace-nowrap"><button class="btn-o btn-s" :disabled="r.vencido || !r.telefono" @click="enviarPin(r)">Enviar</button></td>
+        </tr>
+      </tbody></table>
+      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Cada envío abre WhatsApp con el mensaje y el PIN, y al volver queda marcado como entregado con tu nombre y la hora.<span v-if="pinesEnviar.length > 50"> Se muestran 50 de {{ pinesEnviar.length }}.</span></div>
     </div>
 
 
@@ -1110,8 +1207,44 @@ onMounted(() => { cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); c
         (panel de la base de datos → Authentication → Attack Protection → Captcha). Los dos deben estar iguales.
         Si la base lo exige y aquí está apagado, nadie podrá entrar y el acceso mostrará un aviso claro.
       </p>
-      <div class="flex items-center gap-3 mt-3">
-        <button class="btn-p btn-s" :disabled="segBusy" @click="guardarCfgSeg">{{ segBusy ? 'Guardando…' : 'Guardar' }}</button>
+      <div class="mt-5 pt-4 border-t border-line space-y-3">
+        <p class="text-[13.5px] font-semibold">Capas de protección del acceso</p>
+
+        <label class="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer" :class="cfgSeg.bloqueo_activo ? 'border-fp-400 bg-fp-25' : 'border-line bg-white'">
+          <input type="checkbox" v-model="cfgSeg.bloqueo_activo" class="accent-fp-600 w-4 h-4 mt-0.5">
+          <span class="min-w-0">
+            <b class="text-[13.5px]">Bloqueo por intentos fallidos</b>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">A partir de <input type="number" min="1" max="20" v-model.number="cfgSeg.intentos_aviso" class="inp !inline-block !w-14 !py-0.5 !px-1.5 text-center mx-1" @click.stop> fallos avisa cuántos quedan; al llegar a <input type="number" min="2" max="30" v-model.number="cfgSeg.intentos_bloqueo" class="inp !inline-block !w-14 !py-0.5 !px-1.5 text-center mx-1" @click.stop> bloquea <input type="number" min="1" max="1440" v-model.number="cfgSeg.bloqueo_minutos" class="inp !inline-block !w-16 !py-0.5 !px-1.5 text-center mx-1" @click.stop> minutos. Si vuelve a agotarlos, bloqueo definitivo: solo se habilita desde «Usuarios bloqueados».</span>
+          </span>
+        </label>
+
+        <label class="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer" :class="cfgSeg.verificar_padron ? 'border-fp-400 bg-fp-25' : 'border-line bg-white'">
+          <input type="checkbox" v-model="cfgSeg.verificar_padron" class="accent-fp-600 w-4 h-4 mt-0.5">
+          <span class="min-w-0">
+            <b class="text-[13.5px]">Verificar identidad con el padrón en el primer acceso</b>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Antes de crear su PIN personal, la persona escribe su fecha de nacimiento y el municipio donde vota; se contrastan con el padrón. Tres fallos: bloqueo definitivo.</span>
+          </span>
+        </label>
+
+        <label class="flex items-start gap-2.5 rounded-xl border p-3" :class="'border-fp-400 bg-fp-25'">
+          <span class="w-4 h-4 mt-0.5 shrink-0 text-fp-700 text-center leading-4">⏱</span>
+          <span class="min-w-0">
+            <b class="text-[13.5px]">PIN inicial de un solo uso: vence a las <input type="number" min="1" max="720" v-model.number="cfgSeg.pin_caduca_horas" class="inp !inline-block !w-16 !py-0.5 !px-1.5 text-center mx-1"> horas</b>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Si no se usó a tiempo, el acceso pide uno nuevo. Regenerar un PIN reinicia el plazo.</span>
+          </span>
+        </label>
+
+        <label class="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer" :class="cfgSeg.confirmar_sne ? 'border-fp-400 bg-fp-25' : 'border-line bg-white'">
+          <input type="checkbox" v-model="cfgSeg.confirmar_sne" class="accent-fp-600 w-4 h-4 mt-0.5">
+          <span class="min-w-0">
+            <b class="text-[13.5px]">Confirmación de la SNE tras el primer ingreso</b>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Cada primer ingreso aparece en «Primeros ingresos por confirmar» con fecha, hora y dispositivo. Hasta que la administración confirme, la persona consulta pero no registra.</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="flex items-center gap-3 mt-4">
+        <button class="btn-p btn-s" :disabled="segBusy" @click="guardarCfgSeg">{{ segBusy ? 'Guardando…' : 'Guardar seguridad del acceso' }}</button>
         <span v-if="cfgSeg.actualizado_por" class="text-[11px] text-mut">Última modificación por {{ cfgSeg.actualizado_por }}</span>
       </div>
     </section>

@@ -12,6 +12,7 @@ import CintaAvance from './components/CintaAvance.vue';
 import SideNav from './components/SideNav.vue';
 import TabsMovil from './components/TabsMovil.vue';
 import ModalPin from './components/ModalPin.vue';
+import ModalIdentidad from './components/ModalIdentidad.vue';
 import ModalIos from './components/ModalIos.vue';
 import PrintOverlay from './components/PrintOverlay.vue';
 
@@ -31,6 +32,10 @@ watch(perfil, p => { if (p) { cargarCat(); refrescar(); cargarDocsCfg(); } }, { 
   <div v-else id="shell" class="min-h-screen flex flex-col">
     <TopBar />
     <CintaAvance />
+    <!-- Confirmación de la SNE pendiente (fase 74): consulta sí, registra no -->
+    <div v-if="perfil?.confirmacion_pendiente" class="bg-amber-50 border-b border-amber-200 text-amber-900 text-[12.5px] px-4 sm:px-6 py-2 text-center">
+      Tu acceso está <b>pendiente de confirmación por la Comisión</b>. Puedes consultar; podrás registrar cuando la SNE confirme tu identidad.
+    </div>
     <div class="mx-auto max-w-[1600px] w-full px-4 sm:px-6 flex-1 flex gap-6 py-5 pb-24 lg:pb-8">
       <SideNav />
       <main class="flex-1 min-w-0">
@@ -44,6 +49,7 @@ watch(perfil, p => { if (p) { cargarCat(); refrescar(); cargarDocsCfg(); } }, { 
     <TabsMovil />
   </div>
 
+  <ModalIdentidad />
   <ModalPin />
   <ModalIos />
   <PrintOverlay v-if="printJob" />
