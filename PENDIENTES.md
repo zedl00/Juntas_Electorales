@@ -4,14 +4,15 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-1. **Aplicar fase 61** en Supabase (corrige el 400 de cobertura y cuenta por colegio asignado). Verificar en Inicio que «Colegios cubiertos» deja de ser 0.
-2. **Subir el repositorio**: `git push -u origin main`.
-3. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
+1. **Validar fase 61 en pantalla**: recargar Inicio; sin error rojo en consola; en «Cobertura de colegios» los Incompletos pasan de 4 a 5 (el colegio asignado de la prueba de San Juan ya cuenta).
+2. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
+
+Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde GitHub Desktop después de cada sesión.
 
 ## En curso
 
 - **Seguridad de base** (fases 58, 59, 59b, 60 aplicadas). Falta: desactivar registro público en Supabase Auth y activar captcha en Supabase cuando exista el widget de Turnstile (Cloudflare Parte 4).
-- **Recuperar las fases 29 a 57**: exportar las funciones actuales de `delegados` como archivo desde el editor SQL (Export → CSV) y convertirlas en migración de referencia.
+- **Guardar en el repositorio una copia de las funciones que hoy viven en la base** (las fases 29 a 57 se perdieron como archivos, pero las funciones siguen en Supabase). Cómo: en el editor SQL, correr la consulta de `string_agg(pg_get_functiondef…)`, y en el panel de resultados usar «Export» → «Download CSV»; el archivo cae en Descargas. Decirle a Claude el nombre del archivo y él lo convierte en migración. No es urgente.
 
 ## Pendiente
 
@@ -35,4 +36,5 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Hecho
 
+- Fase 61 aplicada (23 sep 2026): cobertura sin error y contada por colegio asignado.
 - v8.7.0: versión visible, `.htaccess` con cabeceras (verificado en servidor), captcha Turnstile con interruptor administrado, fases 58 a 60, paso Confirmar del registro muestra el colegio asignado, git iniciado.
