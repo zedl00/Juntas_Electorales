@@ -1,6 +1,6 @@
 <!-- src/views/UsuariosView.vue -->
 <script setup>
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { ref, computed, onMounted, watch } from 'vue';
 import { sb, sbAux, EMAIL_DOM, PORTAL_URL } from '../lib/supabase';
 import { perfil, esAdmin } from '../stores/auth';
@@ -431,6 +431,17 @@ const irA = (id) => {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
+/* ── Pestañas: Usuarios · Asistente · Configuración (la pestaña viaja en ?t= para enlazar directo) ── */
+const route = useRoute(); const router = useRouter();
+const tab = ref(['usuarios','asistente','config'].includes(route.query.t) ? route.query.t : 'usuarios');
+watch(tab, v => router.replace({ query: { ...route.query, t: v } }));
+const tabs = [
+  { k: 'usuarios',  txt: 'Usuarios' },
+  { k: 'asistente', txt: 'Asistente de consulta' },
+  { k: 'config',    txt: 'Configuración' }
+];
+const irConfig = id => { tab.value = 'config'; setTimeout(() => irA(id), 60); };
+
 /* ── Configuración de traslados ── */
 const cfgTr = ref({ alcance: 'municipio', excede_accion: 'autorizar', encargado_solo_municipio: true, modo_asignacion: 'si_difiere' });
 const cfgBusy = ref(false);
@@ -520,16 +531,23 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
 
 <template>
   <section class="space-y-4">
-    <div class="flex items-center justify-between gap-3">
-      <h2 class="font-serif text-xl font-bold mr-auto">Usuarios territoriales</h2>
-      <a href="#config-traslados" class="btn-o btn-s" @click.prevent="irA('config-traslados')">⇄ Traslados</a>
-      <a href="#config-seguridad" class="btn-o btn-s" @click.prevent="irA('config-seguridad')">⛨ Seguridad del acceso</a>
-      <a href="#config-sello" class="btn-o btn-s" @click.prevent="irA('config-sello')">⎙ Marca de agua</a>
-      <a href="#permisos-rol" class="btn-o btn-s" @click.prevent="irA('permisos-rol')">⚿ Permisos por rol</a>
+    <div class="flex flex-wrap items-center gap-3">
+      <h2 class="font-serif text-xl font-bold mr-auto">Gestión</h2>
       <RouterLink to="/dirigencia" class="btn-o btn-s">⬡ Dirigencia territorial</RouterLink>
-      <button class="btn-p btn-s" @click="abrirCrear">+ Nuevo usuario</button>
+      <button v-if="tab === 'usuarios'" class="btn-p btn-s" @click="abrirCrear">+ Nuevo usuario</button>
     </div>
 
+    <!-- Pestañas -->
+    <div class="inline-flex rounded-xl bg-paper border border-line p-1 gap-1">
+      <button v-for="tb in tabs" :key="tb.k" class="px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition-colors"
+              :class="tab === tb.k ? 'bg-white shadow-sm text-ink' : 'text-mut hover:text-ink'" @click="tab = tb.k">
+        {{ tb.txt }}
+        <span v-if="tb.k === 'usuarios'" class="text-mut font-normal">· {{ usrs.length }}</span>
+        <span v-else-if="tb.k === 'asistente'" class="text-mut font-normal">· {{ wa.filter(w => w.activo).length + tg.filter(w => w.activo).length }}</span>
+      </button>
+    </div>
+
+    <template v-if="tab === 'usuarios'">
     <div class="flex flex-wrap gap-2">
       <span class="chip">Total: {{ usrs.length }}</span>
       <span class="chip">Activos: {{ usrs.filter(u => u.activo).length }}</span>
@@ -633,7 +651,7 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
         </table>
       </div>
     </div>
-    <p class="text-[11px] text-mut px-1">El restablecimiento de PIN olvidado se habilita en la Fase 3 (función administrativa). Mientras tanto, puedes crear nuevamente el acceso desde el panel de Supabase si fuese necesario.</p>
+    </template>
 
     <!-- ═ Modal: crear usuario ═ -->
     <div v-if="ed" class="modal fixed inset-0 z-50 bg-ink/40 p-3 sm:p-6 flex items-start sm:items-center justify-center overflow-y-auto" @click.self="ed = null">
@@ -849,7 +867,8 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
         </div>
       </div>
     </div>
-    <!-- Consultas por WhatsApp -->
+    <template v-if="tab === 'asistente'">
+    <!-- Consultas por WhatsApp y Telegram -->
     <div class="card overflow-hidden">
       <div class="p-4 border-b border-line flex flex-wrap items-center gap-2 cursor-pointer" @click="waOpen = !waOpen">
         <h3 class="font-serif font-bold text-[15px] mr-auto">Asistente de consulta</h3>
@@ -994,11 +1013,20 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
       </div>
     </div>
 
-    <!-- ══ Permisos por rol ══ -->
+    </template>
+
+    <template v-if="tab === 'config'">
+    <!-- Índice de la configuración -->
+    <div class="flex flex-wrap gap-2">
+      <a class="btn-o btn-s" @click.prevent="irA('config-traslados')">⇄ Traslados y asignación</a>
+      <a class="btn-o btn-s" @click.prevent="irA('config-seguridad')">⛨ Seguridad del acceso</a>
+      <a class="btn-o btn-s" @click.prevent="irA('config-sello')">⎙ Marca de agua</a>
+      <a class="btn-o btn-s" @click.prevent="irA('permisos-rol')">⚿ Permisos por rol</a>
+    </div>
 
     <!-- ══ Seguridad del acceso: captcha ══ -->
     <section id="config-seguridad" class="card p-4 scroll-mt-20">
-      <h3 class="font-serif text-[17px] font-bold mb-1">Seguridad del acceso</h3>
+      <h3 class="font-serif text-[15px] font-bold mb-1">Seguridad del acceso</h3>
       <p class="text-[12px] text-mut mb-4 max-w-[76ch]">
         El captcha de Cloudflare (Turnstile) frena los intentos automáticos de adivinar PIN. Se muestra en la
         pantalla de acceso y no requiere que el usuario escriba nada: en la mayoría de los casos pasa solo.
@@ -1015,12 +1043,11 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
         <label class="lbl">Site Key de Turnstile</label>
         <input v-model.trim="cfgSeg.captcha_site_key" class="inp font-mono text-[12.5px]" placeholder="0x4AAAAAAA…" autocomplete="off" spellcheck="false">
       </div>
-      <div class="warn mt-3 text-[12px] leading-snug max-w-[76ch]">
-        <b>Este interruptor va de la mano con Supabase.</b> En Supabase → Authentication → Attack Protection →
-        Captcha se decide si el token es <b>obligatorio</b>. Los dos deben estar iguales: si Supabase lo exige y
-        aquí está apagado, nadie podrá entrar y el acceso mostrará un aviso claro. Si aquí está encendido y
-        Supabase no lo exige, el reto se muestra pero no protege.
-      </div>
+      <p class="text-[11.5px] text-mut mt-3 leading-snug max-w-[76ch]">
+        Este interruptor va de la mano con la base de datos: allí se decide si el token es obligatorio
+        (panel de la base de datos → Authentication → Attack Protection → Captcha). Los dos deben estar iguales.
+        Si la base lo exige y aquí está apagado, nadie podrá entrar y el acceso mostrará un aviso claro.
+      </p>
       <div class="flex items-center gap-3 mt-3">
         <button class="btn-p btn-s" :disabled="segBusy" @click="guardarCfgSeg">{{ segBusy ? 'Guardando…' : 'Guardar' }}</button>
         <span v-if="cfgSeg.actualizado_por" class="text-[11px] text-mut">Última modificación por {{ cfgSeg.actualizado_por }}</span>
@@ -1029,7 +1056,7 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
 
     <!-- ══ Traslados: hasta dónde puede moverse un postulante ══ -->
     <section id="config-traslados" class="card p-4 scroll-mt-20">
-      <h3 class="font-serif text-[17px] font-bold mb-1">Traslados entre demarcaciones</h3>
+      <h3 class="font-serif text-[15px] font-bold mb-1">Traslados y asignación de colegio</h3>
       <p class="text-[12px] text-mut mb-4 max-w-[76ch]">
         Cada postulante tiene dos territorios: dónde vota, que es un dato de la Junta y no cambia, y dónde
         trabajará, que decide el partido. Aquí se define hasta dónde puede moverse una persona respecto al
@@ -1081,7 +1108,7 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
         <div class="grid gap-2 sm:grid-cols-3">
           <label v-for="(txt, k) in { permitir: 'Permitir sin trámite', autorizar: 'Requiere autorización de la SNE', bloquear: 'Bloquear el registro' }" :key="k"
                  class="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-colors"
-                 :class="cfgTr.excede_accion === k ? (k === 'bloquear' ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50') : 'border-line bg-white hover:border-fp-200'">
+                 :class="cfgTr.excede_accion === k ? 'border-fp-400 bg-fp-25' : 'border-line bg-white hover:border-fp-200'">
             <input type="radio" :value="k" v-model="cfgTr.excede_accion" class="accent-fp-600 w-4 h-4 mt-0.5" @change="guardarCfgTr">
             <span class="min-w-0">
               <b class="text-[13px]">{{ txt }}</b>
@@ -1098,7 +1125,7 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
       </div>
 
       <label class="flex items-start gap-2.5 rounded-xl border p-3 mt-3 cursor-pointer transition-colors"
-             :class="cfgTr.encargado_solo_municipio ? 'border-fp-400 bg-fp-25' : 'border-red-300 bg-red-50'">
+             :class="cfgTr.encargado_solo_municipio ? 'border-fp-400 bg-fp-25' : 'border-line bg-white'">
         <input type="checkbox" v-model="cfgTr.encargado_solo_municipio" class="accent-fp-600 w-4 h-4 mt-0.5" @change="guardarCfgTr">
         <span>
           <b class="text-[13.5px]">Los encargados electorales solo registran a quien vota en su municipio</b>
@@ -1117,7 +1144,7 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
 
     <!-- ══ Marca de agua por documento ══ -->
     <section id="config-sello" class="card p-4 scroll-mt-20">
-      <h3 class="font-serif text-[17px] font-bold mb-1">Marca de agua en los documentos</h3>
+      <h3 class="font-serif text-[15px] font-bold mb-1">Marca de agua en los documentos</h3>
       <p class="text-[12px] text-mut mb-4 max-w-[76ch]">
         La marca existe para rastrear fugas: si un listado con nombres y cédulas circula donde no debe,
         indica quién lo imprimió y cuándo. En documentos sin datos personales no cumple esa función.
@@ -1148,7 +1175,7 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
 
     <section id="permisos-rol" class="card p-4 scroll-mt-20">
       <div class="flex flex-wrap items-baseline gap-2 mb-1">
-        <h3 class="font-serif text-[17px] font-bold mr-auto">Qué ve y qué imprime cada rol</h3>
+        <h3 class="font-serif text-[15px] font-bold mr-auto">Qué ve y qué imprime cada rol</h3>
         <button class="btn-o btn-s" @click="cargarPermRol">Actualizar</button>
       </div>
       <p class="text-[12px] text-mut mb-3 max-w-[76ch]">
@@ -1193,7 +1220,7 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
         para que nunca quede el sistema sin nadie capaz de operarlo.
       </p>
     </section>
-
+    </template>
 
   </section>
 </template>

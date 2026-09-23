@@ -96,8 +96,29 @@ import { reqLbl } from '../lib/constantes';
         <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Cómo se registra un postulante</summary>
         <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
           <p>El Encargado Electoral entra a <b>Registrar</b> y sigue 4 pasos: <b>① Cédula</b> — el sistema la busca en el padrón y trae nombre, colegio y recinto de la persona; <b>② Contacto</b> — teléfono, WhatsApp y el cargo al que se postula; <b>③ Requisitos</b> — certifica uno a uno los 7 requisitos del Instructivo; <b>④ Confirmar</b> — revisa y registra. El sistema asigna el <b>número de formulario</b> automáticamente y permite imprimirlo de inmediato para las firmas.</p>
-          <p>El sistema verifica solo que la persona <b>vote en la demarcación</b> donde ejercerá y que <b>no esté postulada dos veces</b>. Si detecta que fue <b>delegado(a) en 2024</b>, lo marca como experiencia.</p>
+          <p>El sistema comprueba que la persona <b>no esté postulada dos veces</b> y dónde <b>vota</b> según el padrón. Si detecta que fue <b>delegado(a) en 2024</b>, lo marca como experiencia.</p>
+          <p><b>Dónde vota y dónde trabajará son dos cosas distintas.</b> Dónde vota lo dice la Junta y no cambia. Dónde trabajará lo decide el partido: si la persona vota en el municipio, queda en su propio colegio sin preguntar; la Comisión puede configurar que se pregunte el colegio en cada registro para repartir gente entre recintos. <b>Solo el colegio donde trabajará cuenta para la cobertura</b>: un colegio está cubierto con tres personas asignadas.</p>
+          <p><b>El Encargado Electoral registra solo a quien vota en su municipio.</b> Si la cédula vota en otro municipio, el sistema lo avisa y no permite continuar. Registrar a alguien que vota fuera es tarea de la administración de la SNE, y depende de la configuración de traslados.</p>
           <p class="text-[12px] text-mut">¿La persona no aparece en el padrón? Existe el <b>registro manual</b>: se capturan sus datos y el expediente queda marcado para que la Comisión lo verifique después.</p>
+        </div>
+      </details>
+
+      <details class="card acc">
+        <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Asignación de colegios</summary>
+        <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
+          <p>La pantalla <b>Asignación</b> es la herramienta de ajuste; en el registro diario casi no hace falta. Sirve para: dar colegio a quien quedó sin él (registros anteriores o traslados aprobados después), <b>mover</b> a alguien a otro colegio del mismo municipio cuando uno se llena y otro está vacío, ver quién está <b>reubicado</b> (trabaja en un colegio distinto del que le toca por el padrón), y ver los <b>colegios con faltantes</b>.</p>
+          <p>Las cuatro tarjetas de arriba llevan a su lista. Junto a «Asignación» en el menú aparece cuántas personas esperan colegio. Puede asignar y mover la administración de la SNE en todo el país, y en su municipio el Encargado Electoral o quien tenga permiso de registrar. Cada asignación queda en la bitácora.</p>
+        </div>
+      </details>
+
+      <details v-if="sesion" class="card acc">
+        <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Configuración de la Comisión (Gestión → Configuración)</summary>
+        <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
+          <p><b>Traslados y asignación de colegio.</b> Tres decisiones: <b>hasta dónde</b> puede moverse una persona respecto al colegio donde vota (su colegio, su municipio, su provincia o libre); <b>qué pasa cuando un registro excede ese alcance</b> (permitir sin trámite, requerir autorización de la SNE, o bloquear); y si <b>los Encargados Electorales solo registran a quien vota en su municipio</b>, que es lo recomendado. También se decide cuándo se pregunta el colegio de trabajo: nunca, solo si la persona vota fuera, o en cada registro.</p>
+          <p><b>Autorización de la SNE.</b> Cuando un registro queda pendiente, la persona tiene colegio solicitado pero <b>no cuenta</b> para la cobertura. La administración lo aprueba o rechaza en <b>Dirigencia → Traslados</b>. Al aprobar, el colegio pasa a asignado y la persona empieza a contar. Si se rechaza, queda sin colegio en ese territorio.</p>
+          <p><b>Seguridad del acceso.</b> Un interruptor activa la verificación anti-robots (captcha) en la pantalla de entrada. Va de la mano con la base de datos, que es quien exige el token.</p>
+          <p><b>Marca de agua y permisos por rol.</b> Qué documentos llevan marca de agua al imprimirse, y qué ve y qué imprime cada rol.</p>
+          <p class="text-[12px] text-mut">Todo cambio de configuración queda registrado en Actividad con el nombre de quien lo hizo.</p>
         </div>
       </details>
 

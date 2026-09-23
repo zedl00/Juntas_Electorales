@@ -75,7 +75,7 @@ export async function login(acceso, pin, captchaToken = '') {
   });
   if (error) {
     if (/invalid login/i.test(error.message)) return 'Cédula o PIN incorrectos.';
-    if (/captcha/i.test(error.message)) return 'Supabase exige la verificación de seguridad pero el portal la tiene desactivada. Administración: actívala en Gestión → Usuarios → Seguridad del acceso.';
+    if (/captcha/i.test(error.message)) return 'La base de datos exige la verificación de seguridad pero el portal la tiene desactivada. Administración: actívala en Gestión → Configuración → Seguridad del acceso.';
     return 'No se pudo iniciar sesión: ' + error.message;
   }
   sesion.value = data.session;

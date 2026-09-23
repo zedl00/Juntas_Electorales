@@ -20,8 +20,8 @@ const solicitarPin = async () => {
 };
 
 /* ── Captcha de Cloudflare (Turnstile) ──
-   La administración lo activa o desactiva en Gestión → Usuarios → Seguridad del
-   acceso (fase 60). La pantalla de acceso lee esa configuración sin sesión por
+   La administración lo activa o desactiva en Gestión → Configuración → Seguridad
+   del acceso (fase 60). La pantalla de acceso lee esa configuración sin sesión por
    la función pública portal_config_publica. El token es de un solo uso: tras
    cada intento se reinicia el reto. */
 const TS_KEY = ref('');
