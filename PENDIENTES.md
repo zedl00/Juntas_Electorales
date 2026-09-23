@@ -4,14 +4,9 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-1. **Aplicar fase 64** (encargado limitado a su municipio, también en la base). Esperado: 1 fila ok = true.
-3. **Aplicar fase 69** (formularios habilitados, aplicado en la base). Esperado: 1 fila con los dos valores en true.
-3d. **Aplicar fase 72** (reabrir traslados rechazados). Esperado: 1 fila `portal_traslado_reabrir`.
-3c. **Aplicar fase 71** (bandeja de traslados muestra el colegio solicitado y quién registró). Esperado: 1 fila ok = true.
-3b. **Aplicar fase 70** (datos legibles de colegio por id). Esperado: 1 fila `portal_colegio_info`. Luego Asignación debe decir «solicita 0043 · CENTRO EDUCATIVO HIGUERITO · San Juan de la Maguana».
-4. **Prueba de Francisca**, ronda 3 pendiente (permitir sin trámite) (autorizar → aprobar en Dirigencia; bloquear; permitir), con la configuración actual: alcance municipio, «Requiere autorización», encargado solo municipio.
-5. **Subir `dist`** al subdominio (Registrar, Asignación, Usuarios y menú cambiaron).
-6. **Probar el flujo completo** con el usuario administrador: asignar a Camilo (0129-00001) con la sugerencia preseleccionada; registrar una cédula de otro municipio con un usuario encargado (no admin) y ver que ahora pasa; en Gestión → Traslados activar «requiere autorización», registrar otra de otra provincia y ver que aparece en «Esperan autorización» y no cuenta; aprobarla en Dirigencia → Traslados y ver que pasa a contar.
+1. **Limpieza de las pruebas**: borrar a Francisca (01200938577) y a 07100236442 con la consulta de limpieza, y dejar la configuración en: alcance municipio · «Requiere autorización» · encargado solo municipio · «Preguntar solo si vota fuera».
+2. **Subir `dist` al subdominio** (cambiaron Registrar, Asignación, Gestión, Dirigencia, Ayuda, menú e impresión) y comprobar en `juntas.strategosfp.com` que la versión y las pantallas coinciden con localhost.
+3. **Crear un usuario encargado de prueba** en Gestión → Usuarios y verificar el bloqueo: al buscar una cédula de otro municipio debe ver «Vota en otro municipio» sin poder continuar.
 4. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
 
 Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde GitHub Desktop después de cada sesión.
@@ -40,6 +35,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Fases 69 a 72 aplicadas. Pruebas de traslado completadas con el administrador: autorizar → aprobar, bloquear, rechazar → reabrir → aprobar. Contador del menú al día (23 sep 2026).
 
 - Fase 63 aplicada; disparador `aa_p28_control_colegio` confirmado primero (23 sep 2026).
 - Fase 65 aplicada y confirmada en pantalla (Santo Domingo de Guzmán). Fase 64 aplicada. Prueba de Camilo ok (23 sep 2026).
