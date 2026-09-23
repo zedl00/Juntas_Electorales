@@ -104,7 +104,8 @@ const puedeP1 = computed(() => (cedOk.value && (manual.value
   ? !!(mf.nombres.trim() && mf.apellido1.trim() && mf.sexo)
   : !!(lkp.value?.encontrado && !lkp.value.ya_postulado && (!mismatch.value || esOclee.value || (esAdmin.value && admOverride.value)))))
   && (!pideColegio.value || !!colegioFinal.value)
-  && !(mismatch.value && !esOclee.value && trasl.value?.estado === 'bloqueado'));
+  && !(mismatch.value && !esOclee.value && trasl.value?.estado === 'bloqueado')
+  && !(lkp.value?.lugar_votacion === 'E' && !esOclee.value));
 const reqCant = computed(() => Object.values(reqR).filter(Boolean).length);
 const reqTotal = computed(() => Object.keys(reqR).length);
 const MIN_REQ = 4;
@@ -331,7 +332,7 @@ const imprimirBlanco = () => printBlanco(munReg.value || 0);
             </div>
             <div class="flex flex-wrap gap-2 mt-3">
               <span v-if="lkp.experiencia_2024" class="chip">✓ Delegado(a) 2024 ({{ lkp.experiencia_veces }})</span>
-              <span v-if="lkp.lugar_votacion === 'E'" class="badge border-sky-200 bg-sky-50 text-sky-800">Vota en el exterior</span>
+              <span v-if="lkp.lugar_votacion === 'E'" class="badge border-sky-200 bg-sky-50 text-sky-800" title="El colegio mostrado es su colegio de origen en el país; su mesa real está en el exterior">Vota en el exterior · el colegio mostrado es su origen en el país</span>
               <span v-if="lkp.es_usuario" class="badge border-line bg-white text-mut">Es usuario del portal</span>
             </div>
           </div>
@@ -339,6 +340,8 @@ const imprimirBlanco = () => printBlanco(munReg.value || 0);
           <div v-if="lkp.ya_postulado" class="errbx"><b>Ya está postulado(a).</b> Formulario {{ lkp.postulado_numero }} · {{ estadoLbl[lkp.postulado_estado] }} · {{ nombreMun(lkp.postulado_municipio_id) }}. El Instructivo permite una sola postulación por persona.</div>
 
           <template v-else>
+            <!-- Vota en el exterior (fase 73): solo puede registrarse desde su oficina OCLEE -->
+            <div v-if="lkp.lugar_votacion === 'E' && !esOclee" class="errbx"><b>Vota en el exterior.</b> Su mesa está fuera del país; el colegio que aparece es solo su origen. Solo puede registrarse a través de su oficina OCLEE.</div>
             <!-- Vota fuera del territorio (fases 63 y 64):
                  · Encargado: no puede registrarlo; el límite es su municipio. La base también lo rechaza.
                  · Administración: puede, y aplica el alcance configurado. Fuera del alcance con

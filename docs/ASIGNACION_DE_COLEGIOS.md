@@ -118,3 +118,7 @@ Casos 3 y 4 de la matriz pasan a: solo la administración. Caso 5: solo la admin
 ## 11. Traslado rechazado (fase 72)
 
 Cuando la SNE rechaza un traslado, la persona sigue registrada con su número de formulario, pero sin colegio: no cuenta para la cobertura, no aparece en «Esperan colegio» y nadie salvo la administración puede darle colegio en ese territorio. Se ve en tres sitios: Dirigencia → Traslados con el filtro «Rechazados», la pantalla Asignación en el bloque «Traslados rechazados por la SNE», y Postulantes en su ficha. Como la cédula solo puede registrarse una vez, la única salida es que la administración **reabra** el caso desde Asignación: vuelve a «pendiente» y entra otra vez en la bandeja para decidirlo de nuevo. Cada reapertura queda en la bitácora.
+
+## 12. Quien vota en el exterior (fase 73)
+
+El padrón marca con «E» a 863,785 personas que votan en el exterior. Para ellas el colegio que trae el padrón es su colegio de **origen** en el país, no su mesa real. Por eso no pueden registrarse en un municipio del país: contarían en un colegio en el que no votan. Solo una oficina OCLEE puede registrarlas. La pantalla lo avisa con «Vota en el exterior» y la base rechaza el registro.

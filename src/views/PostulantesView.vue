@@ -341,7 +341,7 @@ onActivated(() => { if (!route.query.mun) cargarPost(); });
               <span><span class="text-mut">Teléfono:</span> {{ det.telefono ? maskTel(det.telefono, det.id) : '—' }}</span>
               <button v-if="det.telefono && oculto(det.id)" class="btn-o !py-0.5 !px-2 text-[11px]" @click="revelar(det)">Revelar</button>
             </div>
-            <div><span class="text-mut">WhatsApp:</span> {{ det.whatsapp || '—' }}</div>
+            <div><span class="text-mut">WhatsApp:</span> {{ det.whatsapp ? maskTel(det.whatsapp, det.id) : '—' }}</div>
             <div><span class="text-mut">Correo:</span> {{ det.email || '—' }}</div>
             <div><span class="text-mut">Nivel · Ocupación:</span> {{ det.nivel_academico || '—' }} · {{ det.ocupacion || '—' }}</div>
             <div><span class="text-mut">Correo · Vínculo FP:</span> {{ det.email || '—' }} · {{ det.militancia || '—' }}</div>
