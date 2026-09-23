@@ -18,6 +18,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Pendiente
 
+- **Etiqueta «Vota en el exterior»**: el padrón trae `lugar_votacion` L (7.28 M) y E (864 k), pero el portal no tiene colegios del exterior cargados para contrastar. Pendiente confirmar con los campos `*_origen` de la cédula 00100256783 si «E» es exterior y `id_colegio` apunta al colegio de origen.
+
 - **Fase 63 · control formal del colegio en el registro** (depende de la decisión del punto 1 de Próximo; hallazgo: hoy el alcance configurado es solo informativo, el encargado nunca puede registrar fuera de su municipio): disparador `before insert/update` en `postulantes_2028` que verifique que `colegio_asignado` pertenece al municipio, recalcule los datos del padrón en la base y proteja `traslado_estado`, `autorizado_por` y columnas sensibles para quien no sea admin.
 - **Fase 64 · función definer para Strategos** (`padron_buscar`, `padron_resumen_municipio`, `padron_por_cedula`) y retirar de nuevo el `select` de `jce_padron` a `authenticated`.
 - **Solicitud de PIN rota**: el botón «Solicitar» de «¿Olvidaste tu PIN?» llama a `portal_delegados_solicitar_pin`, que no existe; muestra éxito sin guardar nada. Diseñar autoservicio: cédula + código de un solo uso por WhatsApp/Telegram + PIN nuevo.
@@ -35,6 +37,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Máscara 809-000-0000 en teléfono y WhatsApp (registro y usuarios). Asignación visible solo para administración y coordinadores regionales (23 sep 2026).
 
 - Fases 69 a 72 aplicadas. Pruebas de traslado completadas con el administrador: autorizar → aprobar, bloquear, rechazar → reabrir → aprobar. Contador del menú al día (23 sep 2026).
 

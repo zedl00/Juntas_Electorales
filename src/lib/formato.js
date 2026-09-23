@@ -19,6 +19,13 @@ export const genPin = () => String(Math.floor(100000 + Math.random() * 900000));
 
 /** Teléfono RD listo para wa.me: 10 dígitos → antepone el 1. */
 export const soloTel = t => { const d = soloDig(t || ''); return d.length === 10 ? '1' + d : d; };
+/* Máscara visual 809-000-0000: acepta lo que se escriba, conserva solo dígitos (máx. 10) y coloca los guiones */
+export const fmtTel = t => {
+  const d = soloDig(t || '').replace(/^1(?=\d{10}$)/, '').slice(0, 10);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return d.slice(0, 3) + '-' + d.slice(3);
+  return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+};
 
 /** Enlace de WhatsApp con mensaje precargado. */
 export const waLink = (tel, msg) => {

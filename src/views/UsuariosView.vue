@@ -6,7 +6,7 @@ import { sb, sbAux, EMAIL_DOM, PORTAL_URL } from '../lib/supabase';
 import { perfil, esAdmin } from '../stores/auth';
 import { catMap, catGrupos, provsOf, regiones } from '../stores/catalogo';
 import { rolLbl, alcanceLbl } from '../lib/constantes';
-import { fmt, fmtCed, soloDig, fecha, fechaHora, genPin, waLink } from '../lib/formato';
+import { fmt, fmtCed, fmtTel, soloDig, fecha, fechaHora, genPin, waLink } from '../lib/formato';
 import { t, copiar } from '../stores/toasts';
 import { cargarDocsCfg } from '../stores/print';
 
@@ -203,7 +203,7 @@ const capacidad = (u) => {
   return { digita: registra, imprime, ayuda: partes.join(' · ') };
 };
 
-const fmtTel = t => { const d = soloDig(t || ''); return d.length === 10 ? `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}` : (t || ''); };
+/* fmtTel viene de lib/formato: misma máscara 809-000-0000 en pantalla y al escribir */
 const waNorm = t => { const d = soloDig(t || ''); return d.length === 10 ? '1' + d : d; };
 const waPretty = t => {
   const d = String(t || '');
@@ -727,7 +727,7 @@ onMounted(() => { cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); c
 
         <div class="space-y-3">
           <div><label class="lbl">Nombre completo</label><input v-model="ed.nombre" class="inp"></div>
-          <div><label class="lbl">Teléfono / WhatsApp</label><input v-model="ed.telefono" class="inp" placeholder="809-000-0000"></div>
+          <div><label class="lbl">Teléfono / WhatsApp</label><input :value="ed.telefono" @input="ed.telefono = fmtTel($event.target.value)" class="inp" inputmode="tel" placeholder="809-000-0000" maxlength="12"></div>
           <div>
             <label class="lbl">Rol</label>
             <select v-model="ed.rol" class="inp">
@@ -860,7 +860,7 @@ onMounted(() => { cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); c
           </div>
           <div><label class="lbl">Nombre completo</label><input v-model="cu.nombre" class="inp" placeholder="Se completa desde el padrón"></div>
           <div class="grid grid-cols-2 gap-3">
-            <div><label class="lbl">Teléfono</label><input v-model="cu.telefono" class="inp" inputmode="tel"></div>
+            <div><label class="lbl">Teléfono</label><input :value="cu.telefono" @input="cu.telefono = fmtTel($event.target.value)" class="inp" inputmode="tel" placeholder="809-000-0000" maxlength="12"></div>
             <div><label class="lbl">Rol</label><select v-model="cu.rol" class="inp"><option v-for="(l, k) in rolLbl" :key="k" :value="k">{{ l }}</option></select></div>
           </div>
           <div v-if="['presidente','secretario_general','enc_electoral'].includes(cu.rol)">

@@ -2,7 +2,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { esAdmin } from '../stores/auth';
+import { esAdmin, perfil } from '../stores/auth';
 import { sinColegio } from '../stores/kpi';
 
 const route = useRoute();
@@ -11,7 +11,7 @@ const items = [
   { r: 'inicio',      ic: '◈', txt: 'Inicio' },
   { r: 'registrar',   ic: '✎', txt: 'Registrar' },
   { r: 'postulantes', ic: '☰', txt: 'Postulantes' },
-  { r: 'asignacion',  ic: '⊞', txt: 'Asignación' },
+  { r: 'asignacion',  ic: '⊞', txt: 'Asignación', roles: ['admin_sne','coordinador_regional'] },   // por ahora solo SNE y regionales
   { r: 'protocolo',   ic: '§', txt: 'Protocolo' },
   { r: 'dirigencia',  ic: '⬡', txt: 'Dirigencia', admin: true },
   { g: 'gestion',     ic: '⚙', txt: 'Gestión', admin: true,
@@ -49,7 +49,7 @@ watch(() => route.name, n => {
         </template>
 
         <!-- Entrada simple -->
-        <div v-else-if="!it.admin || esAdmin" class="navi" :class="{ 'navi-on': route.name === it.r }" @click="router.push({ name: it.r })">
+        <div v-else-if="(!it.admin || esAdmin) && (!it.roles || it.roles.includes(perfil?.rol))" class="navi" :class="{ 'navi-on': route.name === it.r }" @click="router.push({ name: it.r })">
           <span>{{ it.ic }}</span> {{ it.txt }}
           <span v-if="it.r === 'asignacion' && sinColegio" class="ml-auto badge border-amber-300 bg-amber-50 text-amber-800 !py-0" title="Esperan colegio">{{ sinColegio }}</span>
         </div>

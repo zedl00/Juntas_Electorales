@@ -8,7 +8,7 @@ import { catMap, catGrupos, nombreMun } from '../stores/catalogo';
 import { cargarKpi, cargarTerr, cargarSinColegio } from '../stores/kpi';
 import { printIndividual, printBlanco, docsCfg } from '../stores/print';
 import { rolLbl, cargoLbl, estadoLbl, reqLbl, reqDet, nivelOpts, expTitulo, expLbl, trasladoLbl } from '../lib/constantes';
-import { fmt, fmtCed, soloDig, edad, cedulaValida, cedulaError } from '../lib/formato';
+import { fmt, fmtCed, fmtTel, soloDig, edad, cedulaValida, cedulaError } from '../lib/formato';
 import { t } from '../stores/toasts';
 
 defineOptions({ name: 'RegistrarView' });
@@ -399,9 +399,9 @@ const imprimirBlanco = () => printBlanco(munReg.value || 0);
       <div v-show="pasoR === 1" class="card p-5">
         <p class="text-[12px] text-mut mb-3">Los campos marcados con <span class="text-red-600 font-bold">*</span> son obligatorios para continuar.</p>
         <div class="grid sm:grid-cols-2 gap-4">
-          <div><label class="lbl lbl-req">Teléfono</label><input v-model="fR.telefono" class="inp" :class="!telOk && fR.telefono ? '!border-red-300' : ''" inputmode="tel" placeholder="809-000-0000">
+          <div><label class="lbl lbl-req">Teléfono</label><input :value="fR.telefono" @input="fR.telefono = fmtTel($event.target.value)" class="inp" :class="!telOk && fR.telefono ? '!border-red-300' : ''" inputmode="tel" placeholder="809-000-0000" maxlength="12">
             <div v-if="fR.telefono && !telOk" class="text-[11px] text-red-600 mt-1">Debe tener 10 dígitos, por ejemplo 809 555 1234.</div></div>
-          <div><label class="lbl lbl-req">WhatsApp</label><div class="flex gap-2"><input v-model="fR.whatsapp" class="inp" inputmode="tel" placeholder="809-000-0000"><button type="button" class="btn-o btn-s shrink-0" @click="fR.whatsapp = fR.telefono">Igual</button></div></div>
+          <div><label class="lbl lbl-req">WhatsApp</label><div class="flex gap-2"><input :value="fR.whatsapp" @input="fR.whatsapp = fmtTel($event.target.value)" class="inp" :class="!waOk && fR.whatsapp ? '!border-red-300' : ''" inputmode="tel" placeholder="809-000-0000" maxlength="12"><button type="button" class="btn-o btn-s shrink-0" @click="fR.whatsapp = fR.telefono">Igual</button></div></div>
           <div><label class="lbl">Correo electrónico</label><input v-model="fR.email" class="inp" type="email" placeholder="opcional"></div>
           <div><label class="lbl">Nivel académico</label><select v-model="fR.nivel" class="inp"><option value="">Seleccionar…</option><option v-for="n in nivelOpts" :key="n" :value="n">{{ n }}</option></select></div>
           <div class="sm:col-span-2"><label class="lbl">Dirección</label><input v-model="fR.direccion" class="inp" placeholder="Calle, sector, referencia"></div>
