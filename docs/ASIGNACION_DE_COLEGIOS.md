@@ -96,3 +96,13 @@ La Comisión eligió la **Opción 1** y las cuatro mejoras de pantalla. Se aplic
 - El menú lateral muestra junto a «Asignación» cuántas personas esperan colegio.
 
 **Casos 3 y 4 de la matriz** pasan a: cualquier encargado con permiso puede registrarlos eligiendo colegio. **Caso 5**: queda pendiente y no cuenta hasta aprobarse.
+
+## 9. Ajuste del 23 de septiembre de 2026: el límite del encargado es su municipio
+
+Las juntas electorales, los encargados y el registro son por municipio. Por eso se ajusta la Opción 1:
+
+- **Encargado electoral:** solo registra a quien vota en su propio municipio. Si la cédula vota en otro municipio, la pantalla lo bloquea con un mensaje y la base rechaza el registro aunque se intente por la API (fase 64).
+- **Administración de la SNE:** puede registrar a quien vota fuera. Para ella aplica la configuración de alcance y autorización. La opción «provincia» sigue existiendo en la configuración, pero solo la usa la administración.
+- Las mejoras de Asignación no cambian.
+
+Casos 3 y 4 de la matriz pasan a: solo la administración. Caso 5: solo la administración, y queda pendiente hasta aprobarse.

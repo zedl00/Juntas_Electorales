@@ -4,9 +4,10 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-1. **Aplicar fase 63** y comprobar que `aa_p28_control_colegio` sale primero en la lista de disparadores.
-2. **Subir `dist`** al subdominio (Registrar, Asignación y menú cambiaron).
-3. **Probar el flujo completo**: asignar a Camilo (0129-00001) con la sugerencia preseleccionada; registrar una cédula de otro municipio con un usuario encargado (no admin) y ver que ahora pasa; en Gestión → Traslados activar «requiere autorización», registrar otra de otra provincia y ver que aparece en «Esperan autorización» y no cuenta; aprobarla en Dirigencia → Traslados y ver que pasa a contar.
+1. **Resolver la correspondencia de municipios**: la cédula 00100676527 (Distrito Nacional según la JCE) aparece como «vota en Tamboril» porque `portal_buscar_cedula` usa la tabla vieja `_mapeo_municipio`. Diagnóstico pedido; con el resultado se escribe la fase 65 para que use el mapa definitivo.
+2. **Aplicar fase 64** (encargado limitado a su municipio, también en la base).
+3. **Subir `dist`** al subdominio (Registrar, Asignación y menú cambiaron).
+4. **Probar el flujo completo** con el usuario administrador: asignar a Camilo (0129-00001) con la sugerencia preseleccionada; registrar una cédula de otro municipio con un usuario encargado (no admin) y ver que ahora pasa; en Gestión → Traslados activar «requiere autorización», registrar otra de otra provincia y ver que aparece en «Esperan autorización» y no cuenta; aprobarla en Dirigencia → Traslados y ver que pasa a contar.
 4. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
 
 Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde GitHub Desktop después de cada sesión.
@@ -36,6 +37,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Hecho
 
+- Fase 63 aplicada; disparador `aa_p28_control_colegio` confirmado primero (23 sep 2026).
+- Fase 64 escrita: el encargado solo registra a quien vota en su municipio (23 sep 2026).
 - Fase 63 escrita y pantallas de registro y Asignación fortalecidas (23 sep 2026): Opción 1, cuatro mejoras, contador en el menú.
 - Fase 62 aplicada (23 sep 2026); cobertura validada: 4 colegios incompletos corresponden a los 4 registros con colegio asignado.
 - Fase 62 escrita (23 sep 2026): las cuatro funciones restantes cuentan por colegio asignado.

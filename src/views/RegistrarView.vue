@@ -98,7 +98,7 @@ const cedMsg = computed(() => (soloDig(cedR.value).length >= 11 && !cedOk.value)
 
 const puedeP1 = computed(() => (cedOk.value && (manual.value
   ? !!(mf.nombres.trim() && mf.apellido1.trim() && mf.sexo)
-  : !!(lkp.value?.encontrado && !lkp.value.ya_postulado && (!mismatch.value || esOclee.value || admOverride.value)))) && (!pideColegio.value || !!colegioFinal.value));
+  : !!(lkp.value?.encontrado && !lkp.value.ya_postulado && (!mismatch.value || esOclee.value || (esAdmin.value && admOverride.value))))) && (!pideColegio.value || !!colegioFinal.value));
 const reqCant = computed(() => Object.values(reqR).filter(Boolean).length);
 const reqTotal = computed(() => Object.keys(reqR).length);
 const MIN_REQ = 4;
@@ -333,11 +333,13 @@ const imprimirBlanco = () => printBlanco(munReg.value || 0);
           <div v-if="lkp.ya_postulado" class="errbx"><b>Ya está postulado(a).</b> Formulario {{ lkp.postulado_numero }} · {{ estadoLbl[lkp.postulado_estado] }} · {{ nombreMun(lkp.postulado_municipio_id) }}. El Instructivo permite una sola postulación por persona.</div>
 
           <template v-else>
-            <!-- Vota fuera del territorio: el alcance configurado por la SNE decide (fase 63).
-                 Dentro del alcance, o fuera sin autorización exigida: se registra eligiendo colegio.
-                 Fuera del alcance con autorización exigida: se registra como pendiente y no cuenta hasta aprobarse. -->
+            <!-- Vota fuera del territorio (fases 63 y 64):
+                 · Encargado: no puede registrarlo; el límite es su municipio. La base también lo rechaza.
+                 · Administración: puede, y aplica el alcance configurado. Fuera del alcance con
+                   autorización exigida queda pendiente y no cuenta hasta aprobarse. -->
             <div v-if="mismatch && !esOclee" class="space-y-2">
-              <div class="warn">
+              <div v-if="!esAdmin" class="errbx"><b>Vota en otro municipio.</b> Según el padrón vota en <b>{{ lkp.municipio_app || lkp.jce_municipio }}</b>. El encargado electoral solo registra a quien vota en su propio municipio. Si la Comisión necesita registrar a esta persona aquí, debe hacerlo la administración de la SNE.</div>
+              <div v-else class="warn">
                 <b>Advertencia:</b> según el padrón vota en <b>{{ lkp.municipio_app || lkp.jce_municipio }}</b>, no en el territorio seleccionado.
                 <span v-if="trasl?.estado === 'pendiente'" class="block mt-1 text-[12px]">Excede el alcance permitido: quedará <b>pendiente de autorización de la SNE</b> y no contará para ningún colegio hasta que se apruebe.</span>
                 <label class="flex items-center gap-2 mt-2 cursor-pointer font-semibold"><input type="checkbox" v-model="admOverride" class="accent-fp-600"> Registrar de todos modos (queda constancia en el expediente)</label>
