@@ -4,8 +4,9 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-1. **Validar fase 61 en pantalla**: recargar Inicio; sin error rojo en consola; en «Cobertura de colegios» los Incompletos pasan de 4 a 5 (el colegio asignado de la prueba de San Juan ya cuenta).
-2. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
+1. **Aplicar fase 62** (la tarjeta «Cobertura de colegios» de Inicio sale de `portal_kpi_filtro`, que no estaba en la 61). Luego recargar Inicio: Incompletos debe reflejar los colegios asignados.
+2. **Comprobar los datos de los 5 registros**: si los 4 registrados antes de la v8.6 no tienen `colegio_asignado`, no contarán en ninguna tarjeta hasta rellenarlo.
+3. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
 
 Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde GitHub Desktop después de cada sesión.
 
@@ -16,7 +17,6 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Pendiente
 
-- **Fase 62 · alinear cobertura por colegio asignado** en `portal_kpi_distritos`, `portal_kpi_filtro`, `portal_bot_nivel`, `portal_bot_resumen` (hoy cuentan por `id_colegio_padron`).
 - **Fase 63 · control formal del colegio en el registro**: disparador `before insert/update` en `postulantes_2028` que verifique que `colegio_asignado` pertenece al municipio, recalcule los datos del padrón en la base y proteja `traslado_estado`, `autorizado_por` y columnas sensibles para quien no sea admin.
 - **Fase 64 · función definer para Strategos** (`padron_buscar`, `padron_resumen_municipio`, `padron_por_cedula`) y retirar de nuevo el `select` de `jce_padron` a `authenticated`.
 - **Solicitud de PIN rota**: el botón «Solicitar» de «¿Olvidaste tu PIN?» llama a `portal_delegados_solicitar_pin`, que no existe; muestra éxito sin guardar nada. Diseñar autoservicio: cédula + código de un solo uso por WhatsApp/Telegram + PIN nuevo.
@@ -36,5 +36,6 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Hecho
 
+- Fase 62 escrita (23 sep 2026): las cuatro funciones restantes cuentan por colegio asignado.
 - Fase 61 aplicada (23 sep 2026): cobertura sin error y contada por colegio asignado.
 - v8.7.0: versión visible, `.htaccess` con cabeceras (verificado en servidor), captcha Turnstile con interruptor administrado, fases 58 a 60, paso Confirmar del registro muestra el colegio asignado, git iniciado.
