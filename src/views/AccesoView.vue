@@ -1,6 +1,6 @@
 <!-- src/views/AccesoView.vue -->
 <script setup>
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { login } from '../stores/auth';
 import { showInstall, isIos, instalar } from '../stores/pwa';
@@ -20,22 +20,26 @@ const solicitarPin = async () => {
 };
 
 /* ── Captcha de Cloudflare (Turnstile) ──
-   Solo se activa cuando VITE_TURNSTILE_SITE_KEY está definida. Sin clave, el
-   acceso funciona igual que antes. El token es de un solo uso: tras cada
-   intento se reinicia el reto. */
-const TS_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
+   La administración lo activa o desactiva en Gestión → Usuarios → Seguridad del
+   acceso (fase 60). La pantalla de acceso lee esa configuración sin sesión por
+   la función pública portal_config_publica. El token es de un solo uso: tras
+   cada intento se reinicia el reto. */
+const TS_KEY = ref('');
 const tsEl = ref(null), tsToken = ref(''), tsId = ref(null);
 const tsRender = () => {
-  if (!TS_KEY || !tsEl.value || !window.turnstile) return;
+  if (!TS_KEY.value || !tsEl.value || !window.turnstile) return;
   tsId.value = window.turnstile.render(tsEl.value, {
-    sitekey: TS_KEY, language: 'es', theme: 'light', size: 'flexible',
+    sitekey: TS_KEY.value, language: 'es', theme: 'light', size: 'flexible',
     callback: tok => { tsToken.value = tok; },
     'expired-callback': () => { tsToken.value = ''; },
     'error-callback':   () => { tsToken.value = ''; }
   });
 };
-onMounted(() => {
-  if (!TS_KEY) return;
+onMounted(async () => {
+  const { data } = await sb.schema('public').rpc('portal_config_publica');
+  if (!data?.captcha_activo || !data?.captcha_site_key) return;
+  TS_KEY.value = data.captcha_site_key;
+  await nextTick();
   if (window.turnstile) { tsRender(); return; }
   const s = document.createElement('script');
   s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
@@ -45,11 +49,11 @@ onMounted(() => {
 
 const entrar = async () => {
   loginErr.value = '';
-  if (TS_KEY && !tsToken.value) { loginErr.value = 'Completa la verificación de seguridad.'; return; }
+  if (TS_KEY.value && !tsToken.value) { loginErr.value = 'Completa la verificación de seguridad.'; return; }
   loginBusy.value = true;
   const err = await login(lf.acceso, lf.pin, tsToken.value);
   loginBusy.value = false;
-  if (TS_KEY && window.turnstile && tsId.value !== null) { window.turnstile.reset(tsId.value); tsToken.value = ''; }
+  if (TS_KEY.value && window.turnstile && tsId.value !== null) { window.turnstile.reset(tsId.value); tsToken.value = ''; }
   if (err) { loginErr.value = err; return; }
   router.push('/inicio');
 };

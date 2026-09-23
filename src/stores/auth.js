@@ -73,7 +73,11 @@ export async function login(acceso, pin, captchaToken = '') {
     email: emailDe(acceso), password: pin,
     ...(captchaToken ? { options: { captchaToken } } : {})
   });
-  if (error) return /invalid login/i.test(error.message) ? 'Cédula o PIN incorrectos.' : ('No se pudo iniciar sesión: ' + error.message);
+  if (error) {
+    if (/invalid login/i.test(error.message)) return 'Cédula o PIN incorrectos.';
+    if (/captcha/i.test(error.message)) return 'Supabase exige la verificación de seguridad pero el portal la tiene desactivada. Administración: actívala en Gestión → Usuarios → Seguridad del acceso.';
+    return 'No se pudo iniciar sesión: ' + error.message;
+  }
   sesion.value = data.session;
   const ok = await postLogin();
   return ok ? null : 'Acceso no habilitado.';

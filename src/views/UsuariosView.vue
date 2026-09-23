@@ -435,6 +435,24 @@ const irA = (id) => {
 const cfgTr = ref({ alcance: 'provincia', requiere_autorizacion: true });
 const cfgBusy = ref(false);
 
+/* ── Seguridad del acceso: captcha de Cloudflare (fase 60) ── */
+const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '' });
+const segBusy = ref(false);
+const cargarCfgSeg = async () => {
+  const { data } = await sb.from('config_seguridad').select('*').limit(1).maybeSingle();
+  if (data) cfgSeg.value = { ...data, captcha_site_key: data.captcha_site_key || '' };
+};
+const guardarCfgSeg = async () => {
+  segBusy.value = true;
+  const { error } = await sb.rpc('portal_config_seguridad_set', {
+    p_captcha: cfgSeg.value.captcha_activo, p_site_key: cfgSeg.value.captcha_site_key
+  });
+  segBusy.value = false;
+  if (error) { t('No se pudo guardar: ' + error.message, 'err'); cargarCfgSeg(); return; }
+  t(cfgSeg.value.captcha_activo ? 'Captcha activado en el acceso' : 'Captcha desactivado en el acceso', 'ok');
+  cargarCfgSeg();
+};
+
 /* ── Marca de agua por documento ── */
 const cfgDoc = ref({});
 const docs = [
@@ -492,7 +510,7 @@ const guardarPermRol = async (r, campo, valor) => {
   t('Permiso actualizado', 'ok');
 };
 
-onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarPermRol(); cargarUsrs(); cargarSolis(); cargarWa(); cargarTg(); });
+onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol(); cargarUsrs(); cargarSolis(); cargarWa(); cargarTg(); });
 </script>
 
 <template>
@@ -500,6 +518,7 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarPermRol(); cargarUsrs(); 
     <div class="flex items-center justify-between gap-3">
       <h2 class="font-serif text-xl font-bold mr-auto">Usuarios territoriales</h2>
       <a href="#config-traslados" class="btn-o btn-s" @click.prevent="irA('config-traslados')">⇄ Traslados</a>
+      <a href="#config-seguridad" class="btn-o btn-s" @click.prevent="irA('config-seguridad')">⛨ Seguridad del acceso</a>
       <a href="#config-sello" class="btn-o btn-s" @click.prevent="irA('config-sello')">⎙ Marca de agua</a>
       <a href="#permisos-rol" class="btn-o btn-s" @click.prevent="irA('permisos-rol')">⚿ Permisos por rol</a>
       <RouterLink to="/dirigencia" class="btn-o btn-s">⬡ Dirigencia territorial</RouterLink>
@@ -971,6 +990,37 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarPermRol(); cargarUsrs(); 
     </div>
 
     <!-- ══ Permisos por rol ══ -->
+
+    <!-- ══ Seguridad del acceso: captcha ══ -->
+    <section id="config-seguridad" class="card p-4 scroll-mt-20">
+      <h3 class="font-serif text-[17px] font-bold mb-1">Seguridad del acceso</h3>
+      <p class="text-[12px] text-mut mb-4 max-w-[76ch]">
+        El captcha de Cloudflare (Turnstile) frena los intentos automáticos de adivinar PIN. Se muestra en la
+        pantalla de acceso y no requiere que el usuario escriba nada: en la mayoría de los casos pasa solo.
+      </p>
+      <label class="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-colors"
+             :class="cfgSeg.captcha_activo ? 'border-fp-400 bg-fp-25' : 'border-line bg-white'">
+        <input type="checkbox" v-model="cfgSeg.captcha_activo" class="accent-fp-600 w-4 h-4 mt-0.5">
+        <span>
+          <b class="text-[13.5px]">Exigir verificación de seguridad al entrar</b>
+          <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Necesita la Site Key del widget creado en Cloudflare → Turnstile.</span>
+        </span>
+      </label>
+      <div class="mt-3 max-w-[520px]">
+        <label class="lbl">Site Key de Turnstile</label>
+        <input v-model.trim="cfgSeg.captcha_site_key" class="inp font-mono text-[12.5px]" placeholder="0x4AAAAAAA…" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="warn mt-3 text-[12px] leading-snug max-w-[76ch]">
+        <b>Este interruptor va de la mano con Supabase.</b> En Supabase → Authentication → Attack Protection →
+        Captcha se decide si el token es <b>obligatorio</b>. Los dos deben estar iguales: si Supabase lo exige y
+        aquí está apagado, nadie podrá entrar y el acceso mostrará un aviso claro. Si aquí está encendido y
+        Supabase no lo exige, el reto se muestra pero no protege.
+      </div>
+      <div class="flex items-center gap-3 mt-3">
+        <button class="btn-p btn-s" :disabled="segBusy" @click="guardarCfgSeg">{{ segBusy ? 'Guardando…' : 'Guardar' }}</button>
+        <span v-if="cfgSeg.actualizado_por" class="text-[11px] text-mut">Última modificación por {{ cfgSeg.actualizado_por }}</span>
+      </div>
+    </section>
 
     <!-- ══ Traslados: hasta dónde puede moverse un postulante ══ -->
     <section id="config-traslados" class="card p-4 scroll-mt-20">
