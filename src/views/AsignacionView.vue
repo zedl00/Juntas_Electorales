@@ -130,8 +130,18 @@ const cargoTxt = c => cargoLbl[c] || c;
           <input v-model="q" class="inp !py-1.5 text-[12.5px] max-w-[200px]" placeholder="Buscar…">
         </div>
 
-        <div v-if="!munEfectivo && scopeAmplio" class="text-[13px] text-mut py-6 text-center">
-          Elige un municipio para poder asignar colegios.
+        <!-- Vista nacional: se listan todos los que esperan, con acceso directo a su municipio -->
+        <div v-if="!munEfectivo && scopeAmplio && pendVista.length" class="space-y-2">
+          <p class="text-[12px] text-mut">Para asignar hay que entrar al municipio de cada persona. Pulsa el botón y el desplegable cambia solo.</p>
+          <div v-for="r in pendVista" :key="r.id"
+               class="rounded-xl border border-amber-200 bg-amber-50/40 p-3 flex flex-wrap items-center gap-3">
+            <div class="min-w-0 mr-auto">
+              <div class="font-semibold text-[13.5px]">{{ r.nombre }}</div>
+              <div class="text-[11.5px] text-mut">{{ r.numero_formulario }} · {{ cargoTxt(r.cargo) }} · registrado en <b>{{ r.territorio }}</b></div>
+              <div class="text-[11.5px] text-mut mt-0.5">Vota en <b>{{ r.vota_municipio }}</b> · {{ r.vota_colegio }}</div>
+            </div>
+            <button class="btn-p btn-s" @click="mun = r.municipio_id">Asignar en {{ r.territorio }} →</button>
+          </div>
         </div>
 
         <div v-else-if="!pendVista.length" class="text-[13px] text-mut py-6 text-center">
