@@ -60,8 +60,7 @@ async function cargarPerfil() {
 
 /** Carga el perfil tras autenticar. Devuelve true si el acceso es válido. */
 export async function postLogin() {
-  const p = await cargarPerfil();
-  if (p) await cargarPermisos();
+  const [p] = await Promise.all([cargarPerfil(), cargarPermisos()]);   // en paralelo: ahorra un viaje al servidor
   if (!p) { t('Tu cuenta no tiene perfil en el Portal de Delegados. Contacta a la Comisión.', 'err'); await sb.auth.signOut(); sesion.value = null; return false; }
   if (!p.activo) { t('Tu acceso está desactivado. Contacta a la Comisión.', 'err'); await sb.auth.signOut(); sesion.value = null; perfil.value = null; return false; }
   showIdent.value = !!p.verificar_identidad && p.rol !== 'admin_sne';   // primero identidad, después el PIN personal; la administración nunca

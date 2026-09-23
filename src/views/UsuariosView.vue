@@ -974,7 +974,7 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
       </div>
     </div>
     <template v-if="tab === 'accesos'">
-    <p class="text-[12px] text-mut">Cuatro bandejas independientes. Cada una se pliega con su título; los números del menú te dicen dónde hay trabajo.</p>
+    <p class="text-[12px] text-mut">Cuatro bandejas independientes; cada una se pliega con su título. Orden recomendado: bloqueados → primeros ingresos → solicitudes de PIN → accesos por enviar. <RouterLink to="/ayuda" class="text-fp-700 underline">Qué es cada una y cuándo se usa →</RouterLink></p>
     <div class="card overflow-hidden border-amber-200">
       <div class="p-4 border-b border-line bg-amber-50/60 flex items-center gap-2 cursor-pointer select-none" @click="abre.solis = !abre.solis">
         <h3 class="font-serif font-bold text-[15px] mr-auto">Solicitudes de PIN pendientes</h3>

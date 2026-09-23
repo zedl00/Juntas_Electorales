@@ -42,8 +42,8 @@ Deno.serve(async (req) => {
 
   const admin = createClient(URL, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  // 1. Captcha: solo si la Comisión lo activó y hay clave secreta configurada
-  const { data: cfg } = await admin.schema("public").rpc("portal_config_publica");
+  // 1. Captcha: solo si hay clave secreta configurada Y la Comisión lo activó (sin clave, se ahorra la consulta)
+  const cfg = TS_SECRET ? (await admin.schema("public").rpc("portal_config_publica")).data : null;
   if (cfg?.captcha_activo && TS_SECRET) {
     if (!body.captcha) return json({ ok: false, msg: "Completa la verificación de seguridad." }, 400);
     const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {

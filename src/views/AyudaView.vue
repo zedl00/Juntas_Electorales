@@ -1,5 +1,5 @@
 <script setup>
-import { sesion } from '../stores/auth';
+import { sesion, esAdmin } from '../stores/auth';
 import { reqLbl } from '../lib/constantes';
 </script>
 
@@ -119,6 +119,35 @@ import { reqLbl } from '../lib/constantes';
         <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
           <p>La pantalla <b>Asignación</b> es la herramienta de ajuste; en el registro diario casi no hace falta. Sirve para: dar colegio a quien quedó sin él (registros anteriores o traslados aprobados después), <b>mover</b> a alguien a otro colegio del mismo municipio cuando uno se llena y otro está vacío, ver quién está <b>reubicado</b> (trabaja en un colegio distinto del que le toca por el padrón), y ver los <b>colegios con faltantes</b>.</p>
           <p>Las cuatro tarjetas de arriba llevan a su lista. Junto a «Asignación» en el menú aparece cuántas personas esperan colegio. Puede asignar y mover la administración de la SNE en todo el país, y en su municipio el Encargado Electoral o quien tenga permiso de registrar. Cada asignación queda en la bitácora.</p>
+        </div>
+      </details>
+
+      <details v-if="esAdmin" class="card acc">
+        <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Accesos y seguridad: qué es cada bandeja y cuándo se usa</summary>
+        <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-3">
+          <p class="text-[12px] text-mut">Gestión → Accesos y seguridad. Cuatro bandejas independientes. Cada una aparece con su contador; si está en cero, no hay nada que hacer.</p>
+
+          <div class="rounded-xl border border-line bg-paper p-3 space-y-1">
+            <p><b>Accesos por enviar.</b></p>
+            <p><b>Cuándo:</b> cada vez que se crea un acceso, individual o masivo desde el archivo de plenos, o se genera un PIN nuevo. <b>Por dónde:</b> Gestión → Usuarios → «+ Nuevo usuario» o «↺ PIN nuevo». <b>Qué hacer:</b> «Enviar siguiente por WhatsApp» abre WhatsApp con el mensaje completo; al volver, la entrega queda marcada con tu nombre y la hora. Los PIN vencen a las 72 horas: si uno aparece «vencido», genera otro antes de enviarlo.</p>
+          </div>
+
+          <div class="rounded-xl border border-line bg-paper p-3 space-y-1">
+            <p><b>Solicitudes de PIN pendientes.</b></p>
+            <p><b>Cuándo:</b> alguien olvidó su PIN y lo pidió desde la pantalla de acceso con «¿Olvidaste tu PIN?». <b>Por dónde:</b> la pantalla de acceso, sin sesión; solo se admite una solicitud pendiente por cédula y la respuesta es la misma exista o no la cuenta. <b>Qué hacer:</b> «Restablecer y enviar» genera un PIN nuevo, cierra la solicitud y abre WhatsApp para enviarlo. Antes de enviarlo, conviene confirmar por teléfono que quien pide es quien dice ser.</p>
+          </div>
+
+          <div class="rounded-xl border border-line bg-paper p-3 space-y-1">
+            <p><b>Usuarios bloqueados.</b></p>
+            <p><b>Cuándo:</b> por tres caminos. Cinco PIN incorrectos seguidos: bloqueo de 15 minutos, que se levanta solo. Si vuelve a agotar los cinco intentos: bloqueo definitivo. O tres fallos en la verificación de identidad con el padrón: bloqueo definitivo. <b>Por dónde:</b> la pantalla de acceso y la modal «Confirma que eres tú». <b>Qué hacer:</b> llama a la persona; si es quien debe ser, «Habilitar» pone los intentos en cero y levanta el bloqueo. Con el ⓘ junto a su nombre ves su fecha de nacimiento y municipio del padrón para guiarla. Si no la reconoces, déjala bloqueada o desactívala desde Usuarios. Cada bloqueo y cada habilitación quedan en Actividad.</p>
+          </div>
+
+          <div class="rounded-xl border border-line bg-paper p-3 space-y-1">
+            <p><b>Primeros ingresos por confirmar.</b></p>
+            <p><b>Cuándo:</b> la primera vez que una persona entra al portal. Queda registrada la fecha, la hora y el dispositivo. <b>Por dónde:</b> automático, al primer ingreso. <b>Qué hacer:</b> llama a la persona y confirma que es quien debe ser; «Confirmar identidad» la habilita para registrar. Mientras tanto puede consultar pero no registrar, y ve un aviso amarillo. Si no la reconoces, «Desactivar» cierra su acceso con un motivo. La línea «✓ Verificó su identidad con el padrón» te dice si ya pasó la verificación automática.</p>
+          </div>
+
+          <p class="text-[12px] text-mut">Orden recomendado cada mañana: bloqueados, primeros ingresos, solicitudes de PIN, accesos por enviar. Los interruptores de cada capa están en Configuración → Seguridad del acceso.</p>
         </div>
       </details>
 
