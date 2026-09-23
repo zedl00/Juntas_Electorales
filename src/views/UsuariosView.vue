@@ -84,7 +84,8 @@ const usrsView = computed(() => usrsFiltrados.value.slice().sort((a, b) => {
 
 const usrsFiltrados = computed(() => usrs.value.filter(u => {
   const q = uF.value.q.trim().toLowerCase();
-  if (q && !(String(u.nombre || '').toLowerCase().includes(q) || soloDig(u.cedula).includes(soloDig(q)))) return false;
+  const qd = soloDig(q);   // solo se compara la cédula si lo escrito tiene dígitos: '' coincidiría con todas
+  if (q && !(String(u.nombre || '').toLowerCase().includes(q) || (qd && soloDig(u.cedula).includes(qd)))) return false;
   if (uF.value.rol && u.rol !== uF.value.rol) return false;
   if (uF.value.prov) { const pid = u.provincia_id || catMap.value.get(u.municipio_id)?.provincia_id; if (pid !== uF.value.prov) return false; }
   if (uF.value.mun && u.municipio_id !== uF.value.mun) return false;
@@ -318,6 +319,22 @@ const tgBaja = async (w) => {
 };
 
 const solis = ref([]);
+/* ── Datos del padrón de un usuario, para dar soporte (fase 77, solo administración; queda en bitácora) ── */
+const padronDe = ref({});   // cédula → { fecha_nacimiento, municipio, colegio, exterior } | { error }
+const verPadron = async ced => {
+  const k = soloDig(ced);
+  if (padronDe.value[k]) { delete padronDe.value[k]; padronDe.value = { ...padronDe.value }; return; }
+  const { data, error } = await sb.rpc('portal_usuario_padron_log', { p_cedula: k });
+  padronDe.value = { ...padronDe.value, [k]: error ? { error: error.message } : (data || { error: 'Sin datos' }) };
+};
+const padronTxt = ced => {
+  const d = padronDe.value[soloDig(ced)];
+  if (!d) return '';
+  if (d.error) return 'Padrón: ' + d.error;
+  if (!d.encontrado) return 'No aparece en el padrón cargado';
+  return 'Nació ' + (d.fecha_nacimiento ? fecha(d.fecha_nacimiento) : '—') + ' · vota en ' + (d.exterior ? 'el exterior' : (d.municipio || '—')) + (d.colegio ? ' · colegio ' + d.colegio : '');
+};
+
 /* ── Bandejas de seguridad (fase 74): bloqueados · por confirmar · accesos por enviar ── */
 const bloqueados = ref([]), porConfirmar = ref([]), pinesEnviar = ref([]), segAccion = ref('');
 const cargarBandejas = async () => {
@@ -678,7 +695,11 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
           </tr></thead>
           <tbody>
             <tr v-for="u in usrsView" :key="u.id" class="border-b border-line/70">
-              <td class="td font-semibold">{{ u.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ u.telefono || '' }}</span></td>
+              <td class="td font-semibold">{{ u.nombre }}
+                <button class="ml-1 text-[11px] text-mut hover:text-fp-700 align-middle" title="Datos del padrón para soporte: fecha de nacimiento y municipio donde vota" @click="verPadron(u.cedula)">ⓘ</button>
+                <span class="block text-[10.5px] text-mut font-normal">{{ u.telefono || '' }}</span>
+                <span v-if="padronTxt(u.cedula)" class="block text-[10.5px] text-fp-800 font-normal bg-fp-25 rounded px-1.5 py-0.5 mt-0.5">{{ padronTxt(u.cedula) }}</span>
+              </td>
               <td class="td tabular-nums whitespace-nowrap">{{ fmtCed(u.cedula) }}</td>
               <td class="td whitespace-nowrap">
                 <div>{{ rolLbl[u.rol] }}</div>
@@ -1011,7 +1032,11 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
 <div v-show="abre.confirmar">      <table class="w-full"><tbody>
         <tr v-if="!porConfirmar.length"><td class="td text-center text-mut py-6" colspan="3">No hay primeros ingresos por confirmar.</td></tr>
         <tr v-for="c in porConfirmar" :key="c.id" class="border-b border-line/60">
-          <td class="td font-semibold">{{ c.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(c.cedula) }} · {{ rolLbl[c.rol] || c.rol }} · {{ c.territorio }}</span></td>
+          <td class="td font-semibold">{{ c.nombre }}
+            <button class="ml-1 text-[11px] text-mut hover:text-fp-700 align-middle" title="Datos del padrón para confirmar por teléfono" @click="verPadron(c.cedula)">ⓘ</button>
+            <span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(c.cedula) }} · {{ rolLbl[c.rol] || c.rol }} · {{ c.territorio }}</span>
+            <span v-if="padronTxt(c.cedula)" class="block text-[10.5px] text-fp-800 font-normal bg-fp-25 rounded px-1.5 py-0.5 mt-0.5">{{ padronTxt(c.cedula) }}</span>
+          </td>
           <td class="td text-[12px] text-mut">Entró {{ fechaHora(c.primer_ingreso_en) }}<span v-if="c.telefono"> · {{ fmtTel(c.telefono) }}</span>
             <span class="block text-[11px]" :class="c.verificado ? 'text-fp-700' : 'text-amber-700'">{{ c.verificado ? '✓ Verificó su identidad con el padrón' : 'Aún no verifica identidad con el padrón' }}</span></td>
           <td class="td text-right whitespace-nowrap">

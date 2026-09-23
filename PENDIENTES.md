@@ -4,6 +4,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
+0a. **Aplicar fase 77** (datos del padrón para soporte, solo administración). Esperado: 2 filas. Luego subir `dist`: buscador de usuarios corregido y botón ⓘ junto a cada nombre.
 0. **Levantar el bloqueo del administrador** (consulta de desbloqueo) y **aplicar fase 76** (identidad parametrizable, administración exenta). Esperado: 1 fila `identidad_campos = fecha`.
 0b. **Subir `dist` al subdominio YA**: con el gancho activo, el código publicado (viejo) no puede iniciar sesión.
 0d. **Probar con un usuario de prueba**: 5 PIN malos → bloqueo 15 min y aparece en «Usuarios bloqueados»; habilitar; entrar bien → modal de identidad → PIN personal → aviso amarillo de confirmación pendiente → confirmar en «Primeros ingresos por confirmar».
@@ -41,6 +42,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Causa del bloqueo del administrador confirmada por bitácora: tres fallos de identidad en 3 s con la sesión de administrador desde una segunda pestaña; fase 76 lo impide. Buscador de usuarios por nombre corregido (23 sep 2026).
 
 - Fase 75 aplicada, función «acceso» desplegada, gancho de token creado. Bloqueo por intentos probado: aparece en Usuarios bloqueados y se habilita. Modal de identidad con salidas «Verificar más tarde» y «Salir» (23 sep 2026).
 
