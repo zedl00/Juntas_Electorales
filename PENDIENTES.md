@@ -4,7 +4,6 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-0a. **Aplicar fase 74** (seguridad del acceso en cuatro capas). Esperado: 1 fila con siete columnas de configuración.
 0b. **Activar el gancho en el panel**: Authentication → Hooks → Password Verification Attempt → Postgres → `public.portal_hook_verificacion_pin`. Sin esto no se cuentan los intentos fallidos.
 0c. **Probar con un usuario de prueba**: 5 PIN malos → bloqueo 15 min y aparece en «Usuarios bloqueados»; habilitar; entrar bien → modal de identidad → PIN personal → aviso amarillo de confirmación pendiente → confirmar en «Primeros ingresos por confirmar».
 0. **Aplicar fase 73** (quien vota en el exterior solo se registra desde una OCLEE). Esperado: 1 fila ok = true.
@@ -39,6 +38,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Fase 74 aplicada. Gestión tiene pestaña «Accesos y seguridad» con cuatro bandejas plegables: solicitudes de PIN, bloqueados, primeros ingresos por confirmar, accesos por enviar (23 sep 2026).
 
 - Fase 74 escrita: bloqueo por intentos (gancho de Auth), verificación con el padrón, PIN con caducidad, confirmación de la SNE, «¿Olvidaste tu PIN?» reconstruido, bandeja de envío de accesos, todo parametrizable en Configuración. Documentado en docs/SEGURIDAD_ACCESO.md (23 sep 2026).
 

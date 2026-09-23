@@ -516,13 +516,17 @@ const irA = (id) => {
 
 /* ── Pestañas: Usuarios · Asistente · Configuración (la pestaña viaja en ?t= para enlazar directo) ── */
 const route = useRoute(); const router = useRouter();
-const tab = ref(['usuarios','asistente','config'].includes(route.query.t) ? route.query.t : 'usuarios');
+const tab = ref(['usuarios','accesos','asistente','config'].includes(route.query.t) ? route.query.t : 'usuarios');
 watch(tab, v => router.replace({ query: { ...route.query, t: v } }));
 const tabs = [
   { k: 'usuarios',  txt: 'Usuarios' },
+  { k: 'accesos',   txt: 'Accesos y seguridad' },
   { k: 'asistente', txt: 'Asistente de consulta' },
   { k: 'config',    txt: 'Configuración' }
 ];
+/* Bandejas plegables de la pestaña Accesos: cada una se abre o cierra por separado */
+const abre = ref({ solis: true, bloqueados: true, confirmar: true, enviar: false });
+const pendAccesos = computed(() => solis.value.length + bloqueados.value.length + porConfirmar.value.length);
 const irConfig = id => { tab.value = 'config'; setTimeout(() => irA(id), 60); };
 
 /* ── Configuración de traslados ── */
@@ -632,6 +636,7 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
         {{ tb.txt }}
         <span v-if="tb.k === 'usuarios'" class="text-mut font-normal">· {{ usrs.length }}</span>
         <span v-else-if="tb.k === 'asistente'" class="text-mut font-normal">· {{ wa.filter(w => w.activo).length + tg.filter(w => w.activo).length }}</span>
+        <span v-else-if="tb.k === 'accesos' && pendAccesos" class="badge border-amber-300 bg-amber-50 text-amber-800 !py-0 ml-1" title="Pendientes de atender">{{ pendAccesos }}</span>
       </button>
     </div>
 
@@ -654,85 +659,7 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
       <button class="btn-o btn-s" @click="uF = { q: '', rol: '', prov: '', mun: '', jce: '', ambito: '', estado: '' }">Limpiar</button>
     </div>
 
-    <div v-if="solis.length" class="card overflow-hidden border-amber-200">
-      <div class="p-4 border-b border-line bg-amber-50/60 flex items-center gap-2">
-        <h3 class="font-serif font-bold text-[15px] mr-auto">Solicitudes de PIN pendientes</h3>
-        <span class="badge border-amber-300 bg-amber-100 text-amber-900">{{ solis.length }}</span>
-        <button class="btn-o btn-s" @click="cargarSolis">Actualizar</button>
-      </div>
-      <table class="w-full">
-        <tbody>
-          <tr v-for="sx in solis" :key="sx.id" class="border-b border-line/60">
-            <td class="td font-semibold">{{ sx.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(sx.cedula) }}</span></td>
-            <td class="td text-mut text-[12px] whitespace-nowrap">{{ rolLbl[sx.rol] || '' }}</td>
-            <td class="td text-mut text-[12px] whitespace-nowrap">{{ fechaHora(sx.created_at) }}</td>
-            <td class="td text-right whitespace-nowrap">
-              <button v-if="sx.rol && sx.rol !== 'admin_sne'" class="btn-p btn-s" @click="resetPin({ cedula: sx.cedula, nombre: sx.nombre, rol: sx.rol, telefono: sx.telefono, municipio_id: null })">↺ Restablecer y enviar</button>
-              <span v-else class="text-[11.5px] text-mut">Sin acceso registrado</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Solicitadas desde la pantalla de acceso. Al restablecer, la solicitud se cierra sola.</div>
-    </div>
 
-    <!-- ══ Usuarios bloqueados (fase 74) ══ -->
-    <div v-if="bloqueados.length" class="card overflow-hidden border-red-200">
-      <div class="p-4 border-b border-line bg-red-50/60 flex items-center gap-2">
-        <h3 class="font-serif font-bold text-[15px] mr-auto">Usuarios bloqueados</h3>
-        <span class="badge border-red-300 bg-red-100 text-red-900">{{ bloqueados.length }}</span>
-        <button class="btn-o btn-s" @click="cargarBandejas">Actualizar</button>
-      </div>
-      <table class="w-full"><tbody>
-        <tr v-for="b in bloqueados" :key="b.id" class="border-b border-line/60">
-          <td class="td font-semibold">{{ b.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(b.cedula) }} · {{ rolLbl[b.rol] || b.rol }}</span></td>
-          <td class="td text-[12px]">
-            <span class="badge" :class="b.tipo === 'definitivo' ? 'border-red-300 bg-red-50 text-red-800' : 'border-amber-300 bg-amber-50 text-amber-800'">{{ b.tipo === 'definitivo' ? 'Bloqueo definitivo' : 'Temporal hasta ' + fechaHora(b.hasta) }}</span>
-            <span v-if="b.motivo" class="block text-[11px] text-mut mt-0.5">{{ b.motivo }}</span>
-          </td>
-          <td class="td text-right whitespace-nowrap"><button class="btn-p btn-s" :disabled="segAccion === b.id" @click="desbloquear(b)">Habilitar</button></td>
-        </tr>
-      </tbody></table>
-      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Habilitar pone los intentos en cero y levanta el bloqueo. Queda en la bitácora.</div>
-    </div>
-
-    <!-- ══ Accesos por confirmar (fase 74) ══ -->
-    <div v-if="porConfirmar.length" class="card overflow-hidden border-sky-200">
-      <div class="p-4 border-b border-line bg-sky-50/60 flex items-center gap-2">
-        <h3 class="font-serif font-bold text-[15px] mr-auto">Primeros ingresos por confirmar</h3>
-        <span class="badge border-sky-300 bg-sky-100 text-sky-900">{{ porConfirmar.length }}</span>
-        <button class="btn-o btn-s" @click="cargarBandejas">Actualizar</button>
-      </div>
-      <table class="w-full"><tbody>
-        <tr v-for="c in porConfirmar" :key="c.id" class="border-b border-line/60">
-          <td class="td font-semibold">{{ c.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(c.cedula) }} · {{ rolLbl[c.rol] || c.rol }} · {{ c.territorio }}</span></td>
-          <td class="td text-[12px] text-mut">Entró {{ fechaHora(c.primer_ingreso_en) }}<span v-if="c.telefono"> · {{ fmtTel(c.telefono) }}</span>
-            <span class="block text-[11px]" :class="c.verificado ? 'text-fp-700' : 'text-amber-700'">{{ c.verificado ? '✓ Verificó su identidad con el padrón' : 'Aún no verifica identidad con el padrón' }}</span></td>
-          <td class="td text-right whitespace-nowrap">
-            <button class="btn-p btn-s" :disabled="segAccion === c.id" @click="confirmarAcceso(c, true)">Confirmar identidad</button>
-            <button class="btn-o btn-s ml-1" :disabled="segAccion === c.id" @click="confirmarAcceso(c, false)">Desactivar</button>
-          </td>
-        </tr>
-      </tbody></table>
-      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Llama a la persona y confirma que es quien debe ser. Hasta que confirmes, puede consultar pero no registrar.</div>
-    </div>
-
-    <!-- ══ Accesos por enviar (fase 74) ══ -->
-    <div v-if="pinesEnviar.length" class="card overflow-hidden border-fp-200">
-      <div class="p-4 border-b border-line bg-fp-25 flex flex-wrap items-center gap-2">
-        <h3 class="font-serif font-bold text-[15px] mr-auto">Accesos por enviar</h3>
-        <span class="chip">{{ pinesEnviar.length }} pendientes · {{ pinesEnviar.filter(x => x.vencido).length }} vencidos</span>
-        <button class="btn-p btn-s" @click="enviarSiguiente">📱 Enviar siguiente por WhatsApp</button>
-      </div>
-      <table class="w-full"><tbody>
-        <tr v-for="r in pinesEnviar.slice(0, 50)" :key="r.cedula" class="border-b border-line/60">
-          <td class="td font-semibold">{{ r.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(r.cedula) }} · {{ rolLbl[r.rol] || r.rol }} · {{ r.territorio }}</span></td>
-          <td class="td text-[12px] text-mut whitespace-nowrap">{{ r.telefono ? fmtTel(r.telefono) : 'sin teléfono' }}<span v-if="r.vencido" class="badge border-red-200 bg-red-50 text-red-700 ml-1">PIN vencido</span><span v-else class="block text-[10.5px]">vence {{ fechaHora(r.caduca_en) }}</span></td>
-          <td class="td text-right whitespace-nowrap"><button class="btn-o btn-s" :disabled="r.vencido || !r.telefono" @click="enviarPin(r)">Enviar</button></td>
-        </tr>
-      </tbody></table>
-      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Cada envío abre WhatsApp con el mensaje y el PIN, y al volver queda marcado como entregado con tu nombre y la hora.<span v-if="pinesEnviar.length > 50"> Se muestran 50 de {{ pinesEnviar.length }}.</span></div>
-    </div>
 
 
     <div class="card overflow-hidden">
@@ -1025,6 +952,97 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
         </div>
       </div>
     </div>
+    <template v-if="tab === 'accesos'">
+    <p class="text-[12px] text-mut">Cuatro bandejas independientes. Cada una se pliega con su título; los números del menú te dicen dónde hay trabajo.</p>
+    <div class="card overflow-hidden border-amber-200">
+      <div class="p-4 border-b border-line bg-amber-50/60 flex items-center gap-2 cursor-pointer select-none" @click="abre.solis = !abre.solis">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Solicitudes de PIN pendientes</h3>
+        <span class="badge border-amber-300 bg-amber-100 text-amber-900">{{ solis.length }}</span>
+        <button class="btn-o btn-s" @click.stop="cargarSolis">Actualizar</button>
+        <span class="text-mut text-[13px]">{{ abre.solis ? '▴' : '▾' }}</span>
+      </div>
+<div v-show="abre.solis">      <table class="w-full">
+        <tbody>
+          <tr v-if="!solis.length"><td class="td text-center text-mut py-6" colspan="4">Sin solicitudes pendientes.</td></tr>
+          <tr v-for="sx in solis" :key="sx.id" class="border-b border-line/60">
+            <td class="td font-semibold">{{ sx.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(sx.cedula) }}</span></td>
+            <td class="td text-mut text-[12px] whitespace-nowrap">{{ rolLbl[sx.rol] || '' }}</td>
+            <td class="td text-mut text-[12px] whitespace-nowrap">{{ fechaHora(sx.created_at) }}</td>
+            <td class="td text-right whitespace-nowrap">
+              <button v-if="sx.rol && sx.rol !== 'admin_sne'" class="btn-p btn-s" @click="resetPin({ cedula: sx.cedula, nombre: sx.nombre, rol: sx.rol, telefono: sx.telefono, municipio_id: null })">↺ Restablecer y enviar</button>
+              <span v-else class="text-[11.5px] text-mut">Sin acceso registrado</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Solicitadas desde la pantalla de acceso. Al restablecer, la solicitud se cierra sola.</div></div>
+    </div>
+
+    <!-- ══ Usuarios bloqueados (fase 74) ══ -->
+    <div class="card overflow-hidden border-red-200">
+      <div class="p-4 border-b border-line bg-red-50/60 flex items-center gap-2 cursor-pointer select-none" @click="abre.bloqueados = !abre.bloqueados">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Usuarios bloqueados</h3>
+        <span class="badge border-red-300 bg-red-100 text-red-900">{{ bloqueados.length }}</span>
+        <button class="btn-o btn-s" @click.stop="cargarBandejas">Actualizar</button>
+        <span class="text-mut text-[13px]">{{ abre.bloqueados ? '▴' : '▾' }}</span>
+      </div>
+<div v-show="abre.bloqueados">      <table class="w-full"><tbody>
+        <tr v-if="!bloqueados.length"><td class="td text-center text-mut py-6" colspan="3">Nadie está bloqueado.</td></tr>
+        <tr v-for="b in bloqueados" :key="b.id" class="border-b border-line/60">
+          <td class="td font-semibold">{{ b.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(b.cedula) }} · {{ rolLbl[b.rol] || b.rol }}</span></td>
+          <td class="td text-[12px]">
+            <span class="badge" :class="b.tipo === 'definitivo' ? 'border-red-300 bg-red-50 text-red-800' : 'border-amber-300 bg-amber-50 text-amber-800'">{{ b.tipo === 'definitivo' ? 'Bloqueo definitivo' : 'Temporal hasta ' + fechaHora(b.hasta) }}</span>
+            <span v-if="b.motivo" class="block text-[11px] text-mut mt-0.5">{{ b.motivo }}</span>
+          </td>
+          <td class="td text-right whitespace-nowrap"><button class="btn-p btn-s" :disabled="segAccion === b.id" @click="desbloquear(b)">Habilitar</button></td>
+        </tr>
+      </tbody></table>
+      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Habilitar pone los intentos en cero y levanta el bloqueo. Queda en la bitácora.</div></div>
+    </div>
+
+    <!-- ══ Accesos por confirmar (fase 74) ══ -->
+    <div class="card overflow-hidden border-sky-200">
+      <div class="p-4 border-b border-line bg-sky-50/60 flex items-center gap-2 cursor-pointer select-none" @click="abre.confirmar = !abre.confirmar">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Primeros ingresos por confirmar</h3>
+        <span class="badge border-sky-300 bg-sky-100 text-sky-900">{{ porConfirmar.length }}</span>
+        <button class="btn-o btn-s" @click.stop="cargarBandejas">Actualizar</button>
+        <span class="text-mut text-[13px]">{{ abre.confirmar ? '▴' : '▾' }}</span>
+      </div>
+<div v-show="abre.confirmar">      <table class="w-full"><tbody>
+        <tr v-if="!porConfirmar.length"><td class="td text-center text-mut py-6" colspan="3">No hay primeros ingresos por confirmar.</td></tr>
+        <tr v-for="c in porConfirmar" :key="c.id" class="border-b border-line/60">
+          <td class="td font-semibold">{{ c.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(c.cedula) }} · {{ rolLbl[c.rol] || c.rol }} · {{ c.territorio }}</span></td>
+          <td class="td text-[12px] text-mut">Entró {{ fechaHora(c.primer_ingreso_en) }}<span v-if="c.telefono"> · {{ fmtTel(c.telefono) }}</span>
+            <span class="block text-[11px]" :class="c.verificado ? 'text-fp-700' : 'text-amber-700'">{{ c.verificado ? '✓ Verificó su identidad con el padrón' : 'Aún no verifica identidad con el padrón' }}</span></td>
+          <td class="td text-right whitespace-nowrap">
+            <button class="btn-p btn-s" :disabled="segAccion === c.id" @click="confirmarAcceso(c, true)">Confirmar identidad</button>
+            <button class="btn-o btn-s ml-1" :disabled="segAccion === c.id" @click="confirmarAcceso(c, false)">Desactivar</button>
+          </td>
+        </tr>
+      </tbody></table>
+      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Llama a la persona y confirma que es quien debe ser. Hasta que confirmes, puede consultar pero no registrar.</div></div>
+    </div>
+
+    <!-- ══ Accesos por enviar (fase 74) ══ -->
+    <div class="card overflow-hidden border-fp-200">
+      <div class="p-4 border-b border-line bg-fp-25 flex flex-wrap items-center gap-2 cursor-pointer select-none" @click="abre.enviar = !abre.enviar">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Accesos por enviar</h3>
+        <span class="chip">{{ pinesEnviar.length }} pendientes · {{ pinesEnviar.filter(x => x.vencido).length }} vencidos</span>
+        <button class="btn-p btn-s" @click.stop="enviarSiguiente">📱 Enviar siguiente por WhatsApp</button>
+        <span class="text-mut text-[13px]">{{ abre.enviar ? '▴' : '▾' }}</span>
+      </div>
+<div v-show="abre.enviar">      <table class="w-full"><tbody>
+        <tr v-if="!pinesEnviar.length"><td class="td text-center text-mut py-6" colspan="3">Todos los accesos fueron enviados.</td></tr>
+        <tr v-for="r in pinesEnviar.slice(0, 50)" :key="r.cedula" class="border-b border-line/60">
+          <td class="td font-semibold">{{ r.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(r.cedula) }} · {{ rolLbl[r.rol] || r.rol }} · {{ r.territorio }}</span></td>
+          <td class="td text-[12px] text-mut whitespace-nowrap">{{ r.telefono ? fmtTel(r.telefono) : 'sin teléfono' }}<span v-if="r.vencido" class="badge border-red-200 bg-red-50 text-red-700 ml-1">PIN vencido</span><span v-else class="block text-[10.5px]">vence {{ fechaHora(r.caduca_en) }}</span></td>
+          <td class="td text-right whitespace-nowrap"><button class="btn-o btn-s" :disabled="r.vencido || !r.telefono" @click="enviarPin(r)">Enviar</button></td>
+        </tr>
+      </tbody></table>
+      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Cada envío abre WhatsApp con el mensaje y el PIN, y al volver queda marcado como entregado con tu nombre y la hora.<span v-if="pinesEnviar.length > 50"> Se muestran 50 de {{ pinesEnviar.length }}.</span></div></div>
+    </div>
+    </template>
+
     <template v-if="tab === 'asistente'">
     <!-- Consultas por WhatsApp y Telegram -->
     <div class="card overflow-hidden">
