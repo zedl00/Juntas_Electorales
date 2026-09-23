@@ -39,10 +39,14 @@ const cargarColegios = async () => {
   colegios.value = data || [];
 };
 
-/* Colegios agrupados por recinto, los que menos gente tienen primero */
+/* Colegios agrupados por recinto · distrito · municipio, los que menos gente tienen primero */
 const colPorRecinto = computed(() => {
+  const munNom = catMap.value.get(munReg.value)?.nombre || '';
   const g = {};
-  colegios.value.forEach(c => { (g[c.recinto] = g[c.recinto] || []).push(c); });
+  colegios.value.forEach(c => {
+    const k = [c.recinto, c.distrito && c.distrito !== munNom ? c.distrito : null, munNom].filter(Boolean).join(' · ');
+    (g[k] = g[k] || []).push(c);
+  });
   return Object.entries(g)
     .map(([recinto, items]) => ({ recinto, items, faltan: items.reduce((a, x) => a + x.faltan, 0) }))
     .sort((a, b) => b.faltan - a.faltan || a.recinto.localeCompare(b.recinto));

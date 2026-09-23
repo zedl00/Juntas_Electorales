@@ -14,6 +14,14 @@ const router = useRouter();
 const mun = ref(0), cargando = ref(false), err = ref('');
 const pendientes = ref([]), colegios = ref([]), resumen = ref({});
 const asignados = ref([]), pendAut = ref([]);   // con colegio (para mover) · esperan autorización de la SNE
+const infoCol = ref(new Map());                  // id_colegio → { codigo, recinto, distrito, municipio } (fase 70)
+const cargarInfoCol = async ids => {
+  const faltan = [...new Set(ids.filter(Boolean))].filter(id => !infoCol.value.has(id));
+  if (!faltan.length) return;
+  const { data } = await sb.rpc('portal_colegio_info', { p_ids: faltan });
+  (data || []).forEach(c => infoCol.value.set(c.id_colegio, c));
+  infoCol.value = new Map(infoCol.value);
+};
 const movEleccion = ref({}), moviendo = ref(0), qA = ref(''), soloReub = ref(false);
 const irA = (id, reub = null) => {
   if (reub !== null) soloReub.value = reub;
@@ -65,6 +73,7 @@ const cargar = async () => {
   colegios.value = c.data || [];
   asignados.value = a.data || [];
   pendAut.value = pa.data || [];
+  cargarInfoCol([...asignados.value.map(x => x.colegio_asignado), ...pendAut.value.map(x => x.colegio_solicitado)]);
   /* Sugerencia: el colegio con más faltantes queda preseleccionado; el encargado solo confirma */
   const sugerido = porRecinto.value[0]?.items?.[0]?.id_colegio;
   if (sugerido) pendientes.value.forEach(x => { if (!eleccion.value[x.id]) eleccion.value[x.id] = sugerido; });
@@ -73,9 +82,14 @@ onMounted(cargar);
 watch(munEfectivo, cargar);
 
 /* Colegios agrupados por recinto, los más vacíos primero */
+/* Cada grupo del desplegable dice recinto · distrito · municipio, para saber siempre dónde está el colegio */
 const porRecinto = computed(() => {
+  const munNom = catMap.value.get(munEfectivo.value)?.nombre || '';
   const g = {};
-  colegios.value.forEach(c => { (g[c.recinto] = g[c.recinto] || []).push(c); });
+  colegios.value.forEach(c => {
+    const k = [c.recinto, c.distrito && c.distrito !== munNom ? c.distrito : null, munNom].filter(Boolean).join(' · ');
+    (g[k] = g[k] || []).push(c);
+  });
   return Object.entries(g)
     .map(([recinto, items]) => ({ recinto, items, faltan: items.reduce((a, x) => a + x.faltan, 0) }))
     .sort((a, b) => b.faltan - a.faltan || a.recinto.localeCompare(b.recinto));
@@ -107,7 +121,13 @@ const asignar = async (row) => {
 
 /* Mover a alguien que ya tiene colegio a otro colegio del mismo municipio */
 const colegioMap = computed(() => new Map(colegios.value.map(c => [c.id_colegio, c])));
-const colegioTxt = id => { const c = colegioMap.value.get(id); return c ? `${c.codigo} · ${c.recinto}` : ('Colegio ' + id); };
+const colegioTxt = id => {
+  const c = colegioMap.value.get(id);
+  if (c) return `${c.codigo} · ${c.recinto}${c.distrito ? ' · ' + c.distrito : ''}`;
+  const i = infoCol.value.get(id);
+  if (i) return `${i.codigo} · ${i.recinto}${i.distrito && i.distrito !== i.municipio ? ' · ' + i.distrito : ''} · ${i.municipio}`;
+  return 'Colegio ' + id;
+};
 const nombreDe = r => [r.nombres, r.apellido1, r.apellido2].filter(Boolean).join(' ');
 const esReubicado = r => r.id_colegio_padron != null && r.colegio_asignado !== r.id_colegio_padron;
 const reubicados = computed(() => asignados.value.filter(esReubicado));
@@ -117,7 +137,7 @@ const asigVista = computed(() => {
   if (!s) return base;
   return base.filter(r => nombreDe(r).toLowerCase().includes(s) || colegioTxt(r.colegio_asignado).toLowerCase().includes(s) || territorioDe(r).toLowerCase().includes(s));
 });
-const colegioAsigTxt = r => munEfectivo.value ? colegioTxt(r.colegio_asignado) : (r.codigo_colegio && !esReubicado(r) ? r.codigo_colegio : 'colegio ' + r.colegio_asignado);
+const colegioAsigTxt = r => colegioTxt(r.colegio_asignado);
 const mover = async (row) => {
   const col = movEleccion.value[row.id];
   if (!col || col === row.colegio_asignado) { t('Elige un colegio distinto', 'err'); return; }

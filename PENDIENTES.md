@@ -6,6 +6,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 1. **Aplicar fase 64** (encargado limitado a su municipio, también en la base). Esperado: 1 fila ok = true.
 3. **Aplicar fase 69** (formularios habilitados, aplicado en la base). Esperado: 1 fila con los dos valores en true.
+3b. **Aplicar fase 70** (datos legibles de colegio por id). Esperado: 1 fila `portal_colegio_info`. Luego Asignación debe decir «solicita 0043 · CENTRO EDUCATIVO HIGUERITO · San Juan de la Maguana».
 4. **Prueba de Francisca**, ronda 3 pendiente (permitir sin trámite) (autorizar → aprobar en Dirigencia; bloquear; permitir), con la configuración actual: alcance municipio, «Requiere autorización», encargado solo municipio.
 5. **Subir `dist`** al subdominio (Registrar, Asignación, Usuarios y menú cambiaron).
 6. **Probar el flujo completo** con el usuario administrador: asignar a Camilo (0129-00001) con la sugerencia preseleccionada; registrar una cédula de otro municipio con un usuario encargado (no admin) y ver que ahora pasa; en Gestión → Traslados activar «requiere autorización», registrar otra de otra provincia y ver que aparece en «Esperan autorización» y no cuenta; aprobarla en Dirigencia → Traslados y ver que pasa a contar.
