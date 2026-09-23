@@ -5,13 +5,22 @@ import { showIdent, verificarIdentidad, perfil, logout } from '../stores/auth';
 import { cat } from '../stores/catalogo';
 import { t } from '../stores/toasts';
 
-const fnac = ref(''), mun = ref(0), busy = ref(false), err = ref('');
+const dia = ref(''), mes = ref(0), anio = ref(''), mun = ref(0), busy = ref(false), err = ref('');
+const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+/* Día, mes y año por separado: sin calendario que obligue a recorrer décadas */
+const fnac = computed(() => {
+  const d = +dia.value, m = +mes.value, a = +anio.value;
+  if (!d || !m || !a || a < 1900 || a > 2015 || d < 1 || d > 31) return '';
+  const f = new Date(a, m - 1, d);
+  if (f.getFullYear() !== a || f.getMonth() !== m - 1 || f.getDate() !== d) return '';   // 31 de febrero, etc.
+  return `${a}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+});
 const pideMun = computed(() => perfil.value?.identidad_campos === 'fecha_municipio');
 const muns = computed(() => [...cat.value].filter(m => m.tipo !== 'OCLEE').sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')));
 
 const verificar = async () => {
   err.value = '';
-  if (!fnac.value) { err.value = 'Escribe tu fecha de nacimiento.'; return; }
+  if (!fnac.value) { err.value = 'Escribe una fecha de nacimiento válida: día, mes y año.'; return; }
   busy.value = true;
   const e = await verificarIdentidad(fnac.value, mun.value || null);
   busy.value = false;
@@ -29,7 +38,18 @@ const masTarde = () => { showIdent.value = false; t('Podrás consultar. Para reg
       <div class="font-serif font-bold text-[18px]">Confirma que eres tú</div>
       <p class="text-[12.5px] text-mut mt-1 mb-4">Hola {{ perfil?.nombre }}. Antes de continuar, verificamos tu identidad con el padrón de la Junta{{ pideMun ? ' con tu fecha de nacimiento y tu municipio' : ' con tu fecha de nacimiento' }}. Tienes tres intentos.</p>
       <div class="space-y-3">
-        <div><label class="lbl">Tu fecha de nacimiento</label><input v-model="fnac" type="date" class="inp" autocomplete="off"></div>
+        <div>
+          <label class="lbl">Tu fecha de nacimiento</label>
+          <div class="grid grid-cols-[4.5rem_1fr_5.5rem] gap-2">
+            <input v-model="dia" type="number" inputmode="numeric" min="1" max="31" class="inp text-center" placeholder="Día" autocomplete="off">
+            <select v-model.number="mes" class="inp">
+              <option :value="0">Mes…</option>
+              <option v-for="(n, i) in meses" :key="n" :value="i + 1">{{ n }}</option>
+            </select>
+            <input v-model="anio" type="number" inputmode="numeric" min="1900" max="2015" class="inp text-center" placeholder="Año" autocomplete="off">
+          </div>
+          <p class="text-[11px] text-mut mt-1">Ejemplo: 16 · noviembre · 1968, tal como aparece en tu cédula.</p>
+        </div>
         <div v-if="pideMun">
           <label class="lbl">Municipio donde votas</label>
           <select v-model.number="mun" class="inp">

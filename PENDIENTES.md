@@ -42,6 +42,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Hecho
 
+- Fechas solo-día corregidas (se mostraban un día antes). Modal de identidad con día · mes · año en campos separados (23 sep 2026).
+
 - Fases 76 y 77 aplicadas; buscador y ⓘ verificados en producción. Ayuda de administración con las cuatro bandejas: cuándo, por dónde, qué hacer. Acceso: función sin consulta de configuración cuando no hay captcha; perfil y permisos en paralelo (23 sep 2026).
 
 - Causa del bloqueo del administrador confirmada por bitácora: tres fallos de identidad en 3 s con la sesión de administrador desde una segunda pestaña; fase 76 lo impide. Buscador de usuarios por nombre corregido (23 sep 2026).
