@@ -1,0 +1,162 @@
+/* src/style.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn    { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:pointer-events-none; }
+  .btn-p  { @apply btn bg-fp-600 text-white hover:bg-fp-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fp-600; }
+  .btn-o  { @apply btn border border-line bg-white text-ink hover:border-fp-300 hover:text-fp-800; }
+  .btn-s  { @apply px-3 py-1.5 text-xs; }
+  .inp    { @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-mut/60 focus:border-fp-400 focus:outline-none focus:ring-2 focus:ring-fp-100; }
+  .lbl    { @apply block text-[11px] font-semibold uppercase tracking-wider text-mut mb-1.5; }
+  .card   { @apply rounded-2xl border border-line bg-white; }
+  .kpiN   { @apply font-serif text-3xl font-bold text-ink leading-none; }
+  .th     { @apply px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-mut whitespace-nowrap; }
+  .td     { @apply px-3 py-2.5 text-sm text-ink align-middle; }
+  .navi   { @apply flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-mut cursor-pointer transition-colors hover:bg-fp-25 hover:text-ink; }
+  .navi-on{ @apply bg-fp-25 text-fp-800 relative; }
+  .tabb   { @apply flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold text-mut; }
+  .badge  { @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap; }
+  .chip   { @apply inline-flex items-center gap-1.5 rounded-full bg-fp-50 border border-fp-100 px-2.5 py-1 text-[11px] font-semibold text-fp-800; }
+  .warn   { @apply rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900; }
+  .errbx  { @apply rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800; }
+  .okbx   { @apply rounded-xl border border-fp-200 bg-fp-50 px-3.5 py-2.5 text-sm text-fp-900; }
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+:root { --fp:#1D8A55; }
+html, body { background:#FBFBF9; color:#20241F; }
+body { font-family:'Public Sans', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+::selection { background:#D6EEDF; }
+.bar-anim { transition:width .6s cubic-bezier(.22,1,.36,1); }
+@media (prefers-reduced-motion: reduce){ .bar-anim{ transition:none; } }
+details.acc summary { cursor:pointer; list-style:none; }
+details.acc summary::-webkit-details-marker { display:none; }
+details.acc[open] .acc-ic { transform:rotate(90deg); }
+.acc-ic { transition:transform .15s; }
+select.inp { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2368705F' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right .9rem center; padding-right:2.2rem; }
+.safe-b { padding-bottom:env(safe-area-inset-bottom); }
+
+.lbl-req::after { content: ' *'; color: #DC2626; font-weight: 700; }
+
+/* ── Hojas de impresión (formato acta) ────────────────────── */
+.sheet, .sheet * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+/* ── Trazabilidad de impresión: sello de goma y pie ── */
+.sheet { position: relative; }
+
+/* Sello tipo gomígrafo en la esquina superior derecha */
+.marca-agua {
+  position: absolute; top: 50%; right: 9mm; transform-origin: center; z-index: 2; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; padding: 15px 27px 14px;
+  transform: translateY(-50%) rotate(-11deg);
+  border: 3.4px solid rgba(29, 138, 85, 0.34);
+  border-radius: 6px;
+  color: rgba(29, 138, 85, 0.42);
+  font-family: 'Public Sans', sans-serif;
+  text-align: center; line-height: 1.15;
+  max-width: 100mm;
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+/* Doble filete, como los sellos de goma reales */
+.marca-agua::before {
+  content: ''; position: absolute; inset: 4.5px;
+  border: 1px solid rgba(29, 138, 85, 0.26); border-radius: 4px;
+}
+.marca-agua .m-tit {
+  font-size: 10pt; font-weight: 800; letter-spacing: .17em; text-transform: uppercase;
+  border-bottom: 1px solid rgba(29, 138, 85, 0.26);
+  padding-bottom: 3px; margin-bottom: 3px; width: 100%;
+}
+.marca-agua .m-nom {
+  font-size: 14pt; font-weight: 700; letter-spacing: .02em;
+  overflow-wrap: anywhere;
+}
+.marca-agua .m-fec { font-size: 9.5pt; font-weight: 600; letter-spacing: .04em; }
+
+.pie-traza {
+  margin-top: 14px; padding-top: 6px; border-top: .6px solid #cfcfcf;
+  text-align: center; font-size: 7.5pt; color: #555; line-height: 1.4;
+  position: relative; z-index: 1;
+}
+
+.sheet > *:not(.marca-agua) { position: relative; z-index: 1; }
+
+@media print {
+  .marca-agua { color: rgba(29, 138, 85, 0.5); border-color: rgba(29, 138, 85, 0.4); }
+}
+
+.sheet { font:12px/1.5 'Public Sans', sans-serif; color:#111; background:#fff; }
+
+/* Formulario individual: comprimido para caber en una sola página */
+.sheet.sh-ind { font-size:11px; line-height:1.36; }
+.sheet.sh-ind .sh-sec { font-size:10.5px; padding-bottom:2px; margin:9px 0 5px; }
+.sheet.sh-ind .frow { margin-bottom:5px; gap:6px; }
+.sheet.sh-ind .flab { font-size:9px; }
+.sheet.sh-ind .fval { min-height:14px; font-size:10.5px; }
+
+/* Ubicación electoral: dos bloques, filas más compactas */
+.sheet.sh-ind .ubic .frow { margin-bottom:2px; gap:5px; }
+.sheet.sh-ind .ubic .flab { font-size:8px; min-width:58px; }
+.sheet.sh-ind .ubic .fval { min-height:12px; font-size:9.5px; padding:0 3px 0; }
+.sheet .s-serif { font-family:'Source Serif 4', Georgia, serif; }
+.sh-sec { font-family:'Source Serif 4', Georgia, serif; font-weight:700; font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; border-bottom:1.4px solid #20241F; padding-bottom:3px; margin:14px 0 8px; }
+.frow { display:flex; gap:6px; align-items:flex-end; margin-bottom:7px; }
+.flab { font-size:10px; font-weight:600; color:#444; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+.fval { flex:1; border-bottom:1px solid #8a8a8a; min-height:16px; padding:0 4px 1px; font-weight:600; }
+.cbx { display:inline-block; width:11px; height:11px; border:1.4px solid #20241F; margin-right:6px; vertical-align:-1px; }
+.cbx.on { background:#20241F; box-shadow:inset 0 0 0 2px #fff; }
+.sigline { border-top:1.2px solid #20241F; margin-top:44px; padding-top:5px; text-align:center; }
+.sheet table { width:100%; border-collapse:collapse; }
+.sheet table.rel th { font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; border-bottom:1.4px solid #20241F; padding:4px 5px; text-align:left; }
+.sheet table.rel td { font-size:10.5px; border-bottom:.6px solid #cfcfcf; padding:4px 5px; }
+
+@media print {
+  @page { margin:12mm 13mm; }
+  body { background:#fff; }
+  #shell, #loginv, .toastwrap, .modal { display:none !important; }
+  .print-overlay { position:relative !important; inset:auto !important; background:#fff !important; padding:0 !important; display:block !important; overflow:visible !important; }
+  .print-controls { display:none !important; }
+  .print-card { box-shadow:none !important; border:0 !important; border-radius:0 !important; max-height:none !important; overflow:visible !important; width:auto !important; max-width:none !important; padding:0 !important; }
+  .sheet { page-break-after:always; }
+  .sheet:last-child { page-break-after:auto; }
+  /* El formulario individual cabe SIEMPRE en una hoja.
+     La escala se ajusta al alto disponible: si el contenido creciera
+     —un nombre muy largo, más requisitos— el navegador lo reduce en
+     vez de arrastrarlo a una segunda página. */
+  .sheet.sh-ind {
+    page-break-inside: avoid;
+    page-break-after: auto;
+    transform-origin: top left;
+    max-height: 262mm;          /* A4 menos los márgenes de @page */
+    overflow: hidden;
+  }
+  .sheet.sh-ind * { page-break-inside: avoid; }
+  .sheet.sh-ind .sh-sec { page-break-after: avoid; }
+  .sheet.sh-ind .ubic { page-break-inside: avoid; }
+  .sheet table.rel thead { display:table-header-group; }
+  .sheet table.rel tr { page-break-inside:avoid; }
+}
+
+/* Marca de agua y trazabilidad de los documentos impresos */
+
+.pie-traza { display: none; }
+
+
+
+/* ── Marca de agua en pantalla sobre listados sensibles ── */
+.velo-datos { position: relative; }
+.velo-datos::after {
+  content: attr(data-velo);
+  position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(15px, 2.4vw, 26px); font-weight: 600; letter-spacing: .05em;
+  color: rgba(29, 138, 85, 0.13); text-align: center;
+  transform: rotate(-16deg); white-space: pre-line; line-height: 2.4;
+}
+@media print { .velo-datos::after { display: none; } }
+
+/* Dato enmascarado */
+.oculto { font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--mut, #5F5E5A); }

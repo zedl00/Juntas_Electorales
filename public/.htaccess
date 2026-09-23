@@ -1,0 +1,40 @@
+# Portal de Delegados 2028 · cabeceras de seguridad y caché
+# Este archivo se copia a dist/ en cada compilación (carpeta public/).
+
+# Sin listado de directorios
+Options -Indexes
+
+# Archivos ocultos (.env, .git, .htaccess…) nunca se sirven
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+
+# HTTP → HTTPS
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Transporte y marco
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  Header always set X-Frame-Options "DENY"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "no-referrer"
+  Header always set Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=(), usb=()"
+
+  # Política de contenido: solo el propio sitio, Supabase y las fuentes de Google.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://eskdfhjdkcnixkkivjeo.supabase.co wss://eskdfhjdkcnixkkivjeo.supabase.co; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+
+  # Chunks con hash: caché larga (cambian de nombre en cada compilación)
+  <FilesMatch "^.+-[A-Za-z0-9_-]{8}\.(js|css|woff2?)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # Entrada y service worker: nunca en caché, para que cada despliegue llegue al instante
+  <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest|workbox-.*\.js)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate"
+    Header set Pragma "no-cache"
+  </FilesMatch>
+</IfModule>

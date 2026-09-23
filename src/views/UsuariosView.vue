@@ -1,0 +1,1122 @@
+<!-- src/views/UsuariosView.vue -->
+<script setup>
+import { RouterLink } from 'vue-router';
+import { ref, computed, onMounted, watch } from 'vue';
+import { sb, sbAux, EMAIL_DOM, PORTAL_URL } from '../lib/supabase';
+import { perfil, esAdmin } from '../stores/auth';
+import { catMap, catGrupos, provsOf, regiones } from '../stores/catalogo';
+import { rolLbl, alcanceLbl } from '../lib/constantes';
+import { fmtCed, soloDig, fecha, fechaHora, genPin, waLink } from '../lib/formato';
+import { t, copiar } from '../stores/toasts';
+
+const permRol = ref([]), permBusy = ref(false);
+const usrs = ref([]), uBusy = ref(false), uF = ref({ q: '', rol: '', prov: '', mun: '', jce: '', ambito: '' });
+const showCrear = ref(false), cuBusy = ref(false), cuErr = ref(''), cuPend = ref(null), cuOk = ref(null);
+const cu = ref({ ced: '', lkpU: null, nombre: '', telefono: '', rol: 'enc_electoral', mun: 0, prov: 0, region: '', pin: genPin(), puedeImp: null });
+
+const cargarUsrs = async () => {
+  if (!esAdmin.value) return;
+  uBusy.value = true;
+  /* Supabase devuelve 1,000 filas por consulta: se pide por tramos hasta agotar */
+  const todos = [];
+  let desde = 0; const paso = 1000; let error = null;
+  for (let i = 0; i < 20; i++) {
+    const r = await sb.from('usuarios_territoriales').select('*')
+      .order('created_at', { ascending: false }).range(desde, desde + paso - 1);
+    if (r.error) { error = r.error; break; }
+    todos.push(...(r.data || []));
+    if ((r.data || []).length < paso) break;
+    desde += paso;
+  }
+  const data = todos;
+  const dd = await sb.from('portal_distritos').select('jce_id,nombre');
+  const mapD = new Map((dd.data || []).map(d => [d.jce_id, d.nombre]));
+  if (data) data.forEach(u => { if (u.jce_id) u.distrito_nombre = mapD.get(u.jce_id); });
+  uBusy.value = false;
+  if (!error) usrs.value = data || [];
+};
+
+const usrsView = computed(() => usrs.value.filter(u => {
+  const q = uF.value.q.trim().toLowerCase();
+  if (q && !(String(u.nombre || '').toLowerCase().includes(q) || soloDig(u.cedula).includes(soloDig(q)))) return false;
+  if (uF.value.rol && u.rol !== uF.value.rol) return false;
+  if (uF.value.prov) { const pid = u.provincia_id || catMap.value.get(u.municipio_id)?.provincia_id; if (pid !== uF.value.prov) return false; }
+  if (uF.value.mun && u.municipio_id !== uF.value.mun) return false;
+  if (uF.value.jce && u.jce_id !== uF.value.jce) return false;
+  if (uF.value.ambito) {
+    const a = u.jce_id ? 'distrito' : (u.municipio_id ? 'municipio' : (u.provincia_id ? 'provincia' : 'nacional'));
+    if (a !== uF.value.ambito) return false;
+  }
+  return true;
+}));
+
+/* ── Edición de usuario ── */
+const ed = ref(null), edBusy = ref(false), edErr = ref(''), edDists = ref([]), edCircs = ref([]);
+
+const abrirEdicion = async u => {
+  edErr.value = '';
+  ed.value = {
+    id: u.id, cedula: u.cedula,
+    nombre: u.nombre || '', telefono: u.telefono || '',
+    rol: u.rol, mun: u.municipio_id || 0, jce: u.jce_id || 0,
+    ambito: (!u.municipio_id && u.provincia_id) ? 'provincia' : 'municipio',
+    circ: u.circ_codigo || '',
+    prov: u.provincia_id || 0, region: u.region || '',
+    verD: u.ver_distritos !== false,
+    puedeImp: u.puede_imprimir,
+    forzar: !!u.primer_acceso,
+    puedeReg: u.puede_registrar,
+    activo: !!u.activo
+  };
+  edDists.value = []; edCircs.value = [];
+  if (u.municipio_id) {
+    const { data: cc } = await sb.from('portal_circ_municipio')
+      .select('circ_codigo,circ_nombre').eq('municipio_id', u.municipio_id).order('circ_codigo');
+    edCircs.value = cc || [];
+    const { data } = await sb.from('portal_distritos')
+      .select('jce_id,nombre,es_dm,colegios').eq('municipio_id', u.municipio_id).order('es_dm').order('nombre');
+    edDists.value = data || [];
+  }
+};
+
+const edCargarDists = async id => {
+  edDists.value = []; edCircs.value = []; ed.value.jce = 0; ed.value.circ = '';
+  if (!id) return;
+  const { data: cc } = await sb.from('portal_circ_municipio')
+    .select('circ_codigo,circ_nombre').eq('municipio_id', id).order('circ_codigo');
+  edCircs.value = cc || [];
+  const { data } = await sb.from('portal_distritos')
+    .select('jce_id,nombre,es_dm,colegios').eq('municipio_id', id).order('es_dm').order('nombre');
+  edDists.value = data || [];
+};
+
+const resetDesdeEdicion = async () => {
+  const e = ed.value;
+  ed.value = null;
+  await resetPin({ id: e.id, cedula: e.cedula, nombre: e.nombre, rol: e.rol,
+                   telefono: e.telefono, municipio_id: e.mun, jce_id: e.jce,
+                   provincia_id: e.prov, region: e.region });
+};
+
+const guardarEdicion = async () => {
+  const e = ed.value;
+  if (!e.nombre.trim()) { edErr.value = 'El nombre es obligatorio.'; return; }
+  const cargo = ['presidente','secretario_general','enc_electoral'].includes(e.rol);
+  const municipal = cargo && e.ambito !== 'provincia';
+  const provincial = cargo && e.ambito === 'provincia';
+  if (municipal && !e.mun) { edErr.value = 'Elige el municipio.'; return; }
+  if (provincial && !e.prov) { edErr.value = 'Elige la provincia.'; return; }
+  if (e.rol === 'supervisor_provincial' && !e.prov) { edErr.value = 'Elige la provincia.'; return; }
+  if (e.rol === 'coordinador_regional' && !e.region) { edErr.value = 'Elige la región.'; return; }
+  edBusy.value = true; edErr.value = '';
+  const { error } = await sb.from('usuarios_territoriales').update({
+    nombre: e.nombre.trim(),
+    telefono: e.telefono.trim() || null,
+    rol: e.rol,
+    municipio_id: municipal ? e.mun : null,
+    jce_id: municipal && e.jce ? e.jce : null,
+    circ_codigo: e.circ || null,
+    provincia_id: (provincial || e.rol === 'supervisor_provincial') ? e.prov : null,
+    region: e.rol === 'coordinador_regional' ? e.region : null,
+    ver_distritos: e.verD !== false,
+    puede_imprimir: cu.value.puedeImp === false ? false : null,
+    puede_imprimir: e.puedeImp === false ? false : null,
+    primer_acceso: !!e.forzar,
+    puede_registrar: e.puedeReg === true ? true : false,
+    activo: e.activo
+  }).eq('id', e.id);
+  edBusy.value = false;
+  if (error) { edErr.value = error.message; return; }
+  t('Usuario actualizado', 'ok');
+  ed.value = null;
+  cargarUsrs();
+};
+
+/* ── Consultas por WhatsApp ── */
+const wa = ref([]), waOpen = ref(false), waBusy = ref(false), waErr = ref('');
+const waF = ref({ tel: '', desc: '', ced: '', rol: 'consulta' });
+
+/* Qué puede hacer cada usuario, resumido para el listado */
+/* Valor efectivo del permiso de registro en el formulario de edición */
+const regEfectivo = (e) => {
+  if (!e) return false;
+  if (e.puedeReg === true) return true;
+  if (e.puedeReg === false) return false;
+  return e.rol === 'enc_electoral' && e.ambito !== 'provincia';
+};
+
+const capacidad = (u) => {
+  const registra = u.puede_registrar === true
+    || (u.puede_registrar == null && ['enc_electoral','admin_sne'].includes(u.rol));
+  const imprime  = u.puede_imprimir !== false;
+  const partes = ['Consulta'];
+  if (registra) partes.unshift('Registra postulantes');
+  if (imprime)  partes.push('imprime');
+  return { digita: registra, imprime, ayuda: partes.join(' · ') };
+};
+
+const fmtTel = t => { const d = soloDig(t || ''); return d.length === 10 ? `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}` : (t || ''); };
+const waNorm = t => { const d = soloDig(t || ''); return d.length === 10 ? '1' + d : d; };
+const waPretty = t => {
+  const d = String(t || '');
+  return d.length === 11 ? `+${d[0]} (${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}` : '+' + d;
+};
+
+const cargarWa = async () => {
+  const { data, error } = await sb.rpc('portal_bot_wa_lista');
+  if (error) {
+    waErr.value = /does not exist|Could not find/i.test(error.message)
+      ? 'Falta ejecutar fase23_admin_whatsapp.sql en Supabase: los números se guardan pero no pueden listarse.'
+      : 'No se pudo leer la lista: ' + error.message;
+    return;
+  }
+  wa.value = data || [];
+};
+
+const guardarWa = async () => {
+  const tel = waNorm(waF.value.tel);
+  if (tel.length < 11) { waErr.value = 'Escribe el número completo con área, por ejemplo 809 555 1234.'; return; }
+  if (!waF.value.desc.trim()) { waErr.value = 'Escribe a quién pertenece el número.'; return; }
+  waBusy.value = true; waErr.value = '';
+  const { error } = await sb.rpc('portal_bot_wa_alta', {
+    p_tel: tel, p_cedula: waF.value.ced || null,
+    p_desc: waF.value.desc.trim(), p_rol: waF.value.rol
+  });
+  waBusy.value = false;
+  if (error) { waErr.value = error.message; return; }
+  t('Número autorizado: ' + waPretty(tel), 'ok');
+  waF.value = { tel: '', desc: '', ced: '', rol: 'consulta' };
+  await cargarWa();
+  if (!wa.value.some(w => w.telefono === tel) && !waErr.value) {
+    waErr.value = 'El número se guardó, pero no aparece en la lista. Recarga la página.';
+  }
+};
+
+const waEstado = async (w) => {
+  const { error } = await sb.rpc('portal_bot_wa_estado', { p_tel: w.telefono, p_activo: !w.activo });
+  if (error) { t(error.message, 'err'); return; }
+  t(w.activo ? 'Acceso revocado' : 'Acceso reactivado', 'ok');
+  cargarWa();
+};
+
+const waBaja = async (w) => {
+  if (!confirm('¿Eliminar por completo el acceso de ' + (w.descripcion || w.telefono) + '?')) return;
+  const { error } = await sb.rpc('portal_bot_wa_baja', { p_tel: w.telefono });
+  if (error) { t(error.message, 'err'); return; }
+  t('Acceso eliminado', 'ok');
+  cargarWa();
+};
+
+/* ── Consultas por Telegram ── */
+const canal = ref('whatsapp');
+const tg = ref([]), tgBusy = ref(false), tgErr = ref('');
+const tgF = ref({ chat: '', desc: '', ced: '', rol: 'consulta' });
+
+/* Usuarios del portal disponibles para enlazar con el asistente */
+const usrsEnlazables = computed(() => usrs.value.filter(u => u.activo));
+const nombreDeCedula = c => {
+  const u = usrs.value.find(x => soloDig(x.cedula) === soloDig(c || ''));
+  return u ? u.nombre : null;
+};
+const alElegirUsrWa = () => {
+  const u = usrs.value.find(x => x.cedula === waF.value.ced);
+  if (u) waF.value.desc = u.nombre + ' · ' + (rolLbl[u.rol] || u.rol);
+};
+const alElegirUsrTg = () => {
+  const u = usrs.value.find(x => x.cedula === tgF.value.ced);
+  if (u) tgF.value.desc = u.nombre + ' · ' + (rolLbl[u.rol] || u.rol);
+};
+
+const cargarTg = async () => {
+  const { data, error } = await sb.rpc('portal_bot_tg_lista');
+  if (error) {
+    tgErr.value = /does not exist|Could not find/i.test(error.message)
+      ? 'Falta ejecutar fase26_admin_telegram.sql en Supabase.'
+      : 'No se pudo leer la lista: ' + error.message;
+    return;
+  }
+  tg.value = data || [];
+};
+
+const guardarTg = async () => {
+  const chat = Number(String(tgF.value.chat).replace(/[^0-9-]/g, ''));
+  if (!chat) { tgErr.value = 'Pega el identificador que la persona recibe al escribir /id al asistente.'; return; }
+  if (!tgF.value.desc.trim()) { tgErr.value = 'Escribe a quién pertenece el acceso.'; return; }
+  tgBusy.value = true; tgErr.value = '';
+  const { error } = await sb.rpc('portal_bot_tg_alta', {
+    p_chat: chat, p_cedula: tgF.value.ced || null,
+    p_desc: tgF.value.desc.trim(), p_rol: tgF.value.rol
+  });
+  tgBusy.value = false;
+  if (error) { tgErr.value = error.message; return; }
+  t('Acceso autorizado', 'ok');
+  tgF.value = { chat: '', desc: '', ced: '', rol: 'consulta' };
+  cargarTg();
+};
+
+const tgEstado = async (w) => {
+  const { error } = await sb.rpc('portal_bot_tg_estado', { p_chat: w.chat_id, p_activo: !w.activo });
+  if (error) { t(error.message, 'err'); return; }
+  t(w.activo ? 'Acceso revocado' : 'Acceso reactivado', 'ok');
+  cargarTg();
+};
+
+const tgBaja = async (w) => {
+  if (!confirm('¿Eliminar por completo el acceso de ' + (w.descripcion || w.chat_id) + '?')) return;
+  const { error } = await sb.rpc('portal_bot_tg_baja', { p_chat: w.chat_id });
+  if (error) { t(error.message, 'err'); return; }
+  t('Acceso eliminado', 'ok');
+  cargarTg();
+};
+
+const solis = ref([]);
+const cargarSolis = async () => {
+  const { data } = await sb.rpc('portal_solicitudes_pin');
+  solis.value = data || [];
+};
+
+const munsFiltro = computed(() => {
+  const l = [...catMap.value.values()].filter(m => !uF.value.prov || m.provincia_id === uF.value.prov);
+  return l.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+});
+const distsFiltro = ref([]);
+watch(() => uF.value.mun, async id => {
+  distsFiltro.value = []; uF.value.jce = '';
+  if (!id) return;
+  const { data } = await sb.from('portal_distritos').select('jce_id,nombre,es_dm')
+    .eq('municipio_id', id).order('es_dm').order('nombre');
+  distsFiltro.value = data || [];
+});
+watch(() => uF.value.prov, () => { uF.value.mun = ''; uF.value.jce = ''; });
+
+const distsU = ref([]);
+const cargarDistsU = async id => {
+  distsU.value = [];
+  if (cu.value) cu.value.jce = 0;
+  if (!id) return;
+  const { data } = await sb.from('portal_distritos').select('jce_id,nombre,es_dm,colegios').eq('municipio_id', id).order('es_dm').order('nombre');
+  distsU.value = data || [];
+};
+
+const territorioDe = u => {
+  if (u.rol === 'consulta_nacional') return 'Nacional · consulta';
+  if (u.jce_id && u.distrito_nombre) return u.distrito_nombre + ' (distrito)';
+  if (u.municipio_id) { const m = catMap.value.get(u.municipio_id); return (m?.nombre || 'Mun. ' + u.municipio_id) + (m?.provincia_nombre ? ' · ' + m.provincia_nombre : ''); }
+  if (u.provincia_id && !u.municipio_id) { const p = provsOf('').find(x => x.id === u.provincia_id); return 'Provincia ' + (p?.nombre || u.provincia_id); }
+  if (u.rol === 'coordinador_regional' && u.region) return 'Región ' + u.region;
+  return 'Nacional';
+};
+
+const toggleActivo = async u => {
+  if (u.id === perfil.value?.id) { t('No puedes desactivar tu propia cuenta: quedarías fuera del portal.', 'err'); return; }
+  const { error } = await sb.from('usuarios_territoriales').update({ activo: !u.activo }).eq('id', u.id);
+  if (error) { t('No se pudo cambiar el estado', 'err'); return; }
+  u.activo = !u.activo;
+};
+
+const accessMsg = (nombre, rolK, terrTxt, cedTxt, pin) => (
+  '🗳️ *Portal de Delegados FP 2028*\nSecretaría Nacional Electoral\n\n' +
+  'Hola ' + nombre + ', se te ha creado acceso como *' + (rolLbl[rolK] || rolK) + '* de *' + terrTxt + '*.\n\n' +
+  '▸ Enlace: ' + PORTAL_URL + '\n' +
+  '▸ Usuario (cédula): ' + cedTxt + '\n' +
+  (pin ? '▸ PIN inicial: ' + pin + '\n' : '▸ PIN: el mismo que ya usas. Si no lo recuerdas, responde este mensaje y la Comisión te genera uno nuevo en un minuto.\n') +
+  '\nEn tu primer ingreso el sistema te pedirá crear tu PIN personal. Desde el navegador puedes instalar la app en tu teléfono.\n\n' +
+  '_Acceso personal e intransferible · Uso exclusivo institucional._'
+);
+
+const copiarAcceso = u => copiar(accessMsg(u.nombre, u.rol, territorioDe(u), fmtCed(u.cedula), null));
+const waAcceso = u => {
+  const ok = confirm(
+    'Reenviar el acceso a ' + u.nombre + ' SIN PIN.\n\n' +
+    'El PIN no se puede recuperar: está cifrado de forma irreversible.\n' +
+    'Este mensaje solo lleva el enlace y la cédula, para quien ya conoce su PIN.\n\n' +
+    'Si la persona olvidó su PIN, cancela y usa «↺ PIN nuevo».'
+  );
+  if (!ok) return;
+  window.open(waLink(u.telefono, accessMsg(u.nombre, u.rol, territorioDe(u), fmtCed(u.cedula), null)), '_blank');
+};
+
+const resetPin = async u => {
+  const pin = genPin();
+  if (!confirm('¿Restablecer el PIN de ' + u.nombre + '?\n\nSe generará el PIN provisional ' + pin + ' y la persona deberá crear su PIN personal al entrar.')) return;
+  const { error } = await sb.rpc('portal_reset_pin', { p_cedula: u.cedula, p_pin: String(pin) });
+  if (error) { t('No se pudo restablecer: ' + error.message, 'err'); return; }
+  t('PIN restablecido', 'ok');
+  cargarSolis();
+  cuOk.value = { reset: true, nombre: u.nombre, tel: u.telefono, pin: String(pin), msg: accessMsg(u.nombre, u.rol, territorioDe(u), fmtCed(u.cedula), String(pin)) };
+  showCrear.value = true;
+  cargarUsrs();
+};
+
+const abrirCrear = () => {
+  cu.value = { ced: '', lkpU: null, nombre: '', telefono: '', rol: 'enc_electoral', mun: 0, jce: 0, prov: 0, region: '', verD: true, puedeReg: null, pin: genPin() };
+  distsU.value = [];
+  cuErr.value = ''; cuPend.value = null; cuOk.value = null; showCrear.value = true;
+};
+
+const buscarCedU = async () => {
+  cu.value.lkpU = null;
+  const d = soloDig(cu.value.ced);
+  if (d.length < 8) { cuErr.value = 'Cédula incompleta.'; return; }
+  cuErr.value = '';
+  cuBusy.value = true;
+  const { data, error } = await sb.rpc('portal_buscar_cedula', { p_ced: d });
+  cuBusy.value = false;
+  if (error) { cuErr.value = 'Error consultando el padrón: ' + error.message; return; }
+  cu.value.lkpU = data;
+  if (data?.encontrado && !cu.value.nombre) cu.value.nombre = (data.nombres + ' ' + data.apellido1 + ' ' + (data.apellido2 || '')).trim();
+};
+
+const terrDePayload = pl => {
+  if (pl.municipio_id) return territorioDe({ municipio_id: pl.municipio_id });
+  if (pl.rol === 'supervisor_provincial') return territorioDe({ rol: pl.rol, provincia_id: pl.provincia_id });
+  if (pl.rol === 'coordinador_regional') return 'Región ' + pl.region;
+  return 'Nacional';
+};
+
+const crearUsuario = async () => {
+  cuErr.value = '';
+  const ced = soloDig(cu.value.ced);
+  const terrRol = ['presidente','secretario_general','enc_electoral'].includes(cu.value.rol);
+  if (ced.length < 8) { cuErr.value = 'Cédula incompleta.'; return; }
+  if (terrRol && !cu.value.mun) { cuErr.value = 'Selecciona el municipio del usuario.'; return; }
+  if (cu.value.rol === 'supervisor_provincial' && !cu.value.prov) { cuErr.value = 'Selecciona la provincia.'; return; }
+  if (cu.value.rol === 'coordinador_regional' && !cu.value.region) { cuErr.value = 'Selecciona la región.'; return; }
+  if (String(cu.value.pin).length < 6) { cuErr.value = 'El PIN debe tener al menos 6 caracteres.'; return; }
+  cuBusy.value = true;
+  const { data: su, error: e1 } = await sbAux.auth.signUp({ email: ced + EMAIL_DOM, password: String(cu.value.pin) });
+  if (e1) {
+    cuBusy.value = false;
+    cuErr.value = /already|registered|exists/i.test(e1.message)
+      ? 'Esta cédula ya tiene una cuenta de acceso creada.'
+      : (/email.*invalid|invalid.*email/i.test(e1.message)
+          ? 'Supabase rechazó el dominio interno «' + EMAIL_DOM + '». Debe ser un dominio real. Cámbialo en el archivo .env (VITE_EMAIL_DOM) y vuelve a compilar.'
+          : 'No se pudo crear la cuenta: ' + e1.message);
+    return;
+  }
+  const uid = su?.user?.id;
+  if (!uid) { cuBusy.value = false; cuErr.value = 'La cuenta no devolvió identificador. En Supabase → Authentication → Providers → Email, desactiva "Confirm email" y reintenta.'; return; }
+  const m = catMap.value.get(cu.value.mun);
+  const payload = {
+    id: uid, cedula: ced, nombre: cu.value.nombre.trim(), telefono: cu.value.telefono.trim() || null,
+    rol: cu.value.rol,
+    municipio_id: terrRol ? cu.value.mun : null,
+    ver_distritos: cu.value.verD !== false,
+    puede_registrar: cu.value.puedeReg,
+    jce_id: ['presidente','secretario_general','enc_electoral'].includes(cu.value.rol) && cu.value.jce ? cu.value.jce : null,
+    provincia_id: cu.value.rol === 'supervisor_provincial' ? cu.value.prov : (terrRol ? (m?.provincia_id || null) : null),
+    region: cu.value.rol === 'coordinador_regional' ? cu.value.region : (terrRol ? (m?.macroregion || null) : null),
+    created_by: perfil.value.id
+  };
+  const { error: e2 } = await sb.from('usuarios_territoriales').insert(payload);
+  cuBusy.value = false;
+  if (e2) { cuPend.value = { payload }; t('La cuenta se creó pero el perfil falló: ' + e2.message, 'err'); return; }
+  cuOk.value = { nombre: payload.nombre, tel: payload.telefono, pin: String(cu.value.pin), msg: accessMsg(payload.nombre, payload.rol, terrDePayload(payload), fmtCed(ced), String(cu.value.pin)) };
+  cuPend.value = null; cargarUsrs();
+};
+
+const reintentarPerfil = async () => {
+  if (!cuPend.value) return;
+  cuBusy.value = true;
+  const { error } = await sb.from('usuarios_territoriales').insert(cuPend.value.payload);
+  cuBusy.value = false;
+  if (error) { t('Sigue fallando: ' + error.message, 'err'); return; }
+  const pl = cuPend.value.payload;
+  cuOk.value = { nombre: pl.nombre, tel: pl.telefono, pin: String(cu.value.pin), msg: accessMsg(pl.nombre, pl.rol, terrDePayload(pl), fmtCed(pl.cedula), String(cu.value.pin)) };
+  cuPend.value = null; cargarUsrs();
+};
+
+const irA = (id) => {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+/* ── Configuración de traslados ── */
+const cfgTr = ref({ alcance: 'provincia', requiere_autorizacion: true });
+const cfgBusy = ref(false);
+
+/* ── Marca de agua por documento ── */
+const cfgDoc = ref({});
+const docs = [
+  { k: 'sello_individual', t: 'Formulario individual',    d: 'Lleva los datos personales del postulante.' },
+  { k: 'sello_blanco',     t: 'Formulario en blanco',     d: 'Sin datos. Pensado para fotocopiarse y repartir; la marca señalaría a quien imprimió el original, no a quien reparte.' },
+  { k: 'sello_relacion',   t: 'Relación de postulantes',  d: 'Listado completo del territorio. El documento de mayor riesgo.' },
+  { k: 'sello_validacion', t: 'Reporte para validación',  d: 'Colegios con sus personas, para la asamblea.' },
+  { k: 'sello_resumen',    t: 'Formulario general',       d: 'Consolidado del territorio con las firmas de la dirigencia.' }
+];
+
+const cargarCfgDoc = async () => {
+  const { data } = await sb.from('config_documentos').select('*').limit(1).maybeSingle();
+  if (data) cfgDoc.value = data;
+};
+
+const guardarCfgDoc = async (campo, valor) => {
+  const { error } = await sb.rpc('portal_config_documentos_set', { p_campo: campo, p_valor: valor });
+  if (error) { t('No se pudo guardar: ' + error.message, 'err'); cargarCfgDoc(); return; }
+  cfgDoc.value[campo] = valor;
+  t('Configuración guardada', 'ok');
+};
+
+const cargarCfgTr = async () => {
+  const { data } = await sb.from('config_traslados').select('*').limit(1).maybeSingle();
+  if (data) cfgTr.value = data;
+};
+
+const guardarCfgTr = async () => {
+  cfgBusy.value = true;
+  const { data, error } = await sb.rpc('portal_config_traslados_set', {
+    p_alcance: cfgTr.value.alcance,
+    p_requiere: cfgTr.value.requiere_autorizacion
+  });
+  if (!error) {
+    await sb.from('config_traslados').update({ modo_asignacion: cfgTr.value.modo_asignacion }).eq('id', true);
+  }
+  cfgBusy.value = false;
+  if (error) { t('No se pudo guardar: ' + error.message, 'err'); cargarCfgTr(); return; }
+  if (data?.ok) t('Configuración guardada', 'ok');
+};
+
+const cargarPermRol = async () => {
+  const { data, error } = await sb.from('permisos_rol').select('*').order('rol');
+  if (error) { t('Permisos: ' + error.message, 'err'); return; }
+  permRol.value = data || [];
+};
+
+const guardarPermRol = async (r, campo, valor) => {
+  permBusy.value = true;
+  const { error } = await sb.from('permisos_rol')
+    .update({ [campo]: valor, actualizado: new Date().toISOString() }).eq('rol', r.rol);
+  permBusy.value = false;
+  if (error) { t('No se pudo guardar: ' + error.message, 'err'); cargarPermRol(); return; }
+  r[campo] = valor;
+  t('Permiso actualizado', 'ok');
+};
+
+onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarPermRol(); cargarUsrs(); cargarSolis(); cargarWa(); cargarTg(); });
+</script>
+
+<template>
+  <section class="space-y-4">
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="font-serif text-xl font-bold mr-auto">Usuarios territoriales</h2>
+      <a href="#config-traslados" class="btn-o btn-s" @click.prevent="irA('config-traslados')">⇄ Traslados</a>
+      <a href="#config-sello" class="btn-o btn-s" @click.prevent="irA('config-sello')">⎙ Marca de agua</a>
+      <a href="#permisos-rol" class="btn-o btn-s" @click.prevent="irA('permisos-rol')">⚿ Permisos por rol</a>
+      <RouterLink to="/dirigencia" class="btn-o btn-s">⬡ Dirigencia territorial</RouterLink>
+      <button class="btn-p btn-s" @click="abrirCrear">+ Nuevo usuario</button>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      <span class="chip">Total: {{ usrs.length }}</span>
+      <span class="chip">Activos: {{ usrs.filter(u => u.activo).length }}</span>
+      <span class="badge border-amber-200 bg-amber-50 text-amber-800">Sin primer acceso: {{ usrs.filter(u => u.primer_acceso).length }}</span>
+      <span class="badge border-line bg-white text-mut">Con acuse de instructivo: {{ usrs.filter(u => u.acuse_instructivo).length }}</span>
+    </div>
+
+    <div class="card p-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <input v-model="uF.q" class="inp !py-2 text-[12.5px] col-span-2 sm:col-span-1" placeholder="Nombre o cédula…">
+      <select v-model="uF.rol" class="inp !py-2 text-[12.5px]"><option value="">Rol: todos</option><option v-for="(l, k) in rolLbl" :key="k" :value="k">{{ l }}</option></select>
+      <select v-model.number="uF.prov" class="inp !py-2 text-[12.5px]"><option value="">Provincia: todas</option><option v-for="p in provsOf('')" :key="p.id" :value="p.id">{{ p.nombre }}</option></select>
+      <select v-model.number="uF.mun" class="inp !py-2 text-[12.5px]"><option value="">Municipio: todos</option><option v-for="m in munsFiltro" :key="m.municipio_id" :value="m.municipio_id">{{ m.nombre }}</option></select>
+      <select v-model.number="uF.jce" class="inp !py-2 text-[12.5px]" :disabled="!distsFiltro.length"><option value="">Distrito: todos</option><option v-for="d in distsFiltro" :key="d.jce_id" :value="d.jce_id">{{ d.nombre }}{{ d.es_dm ? ' · DM' : '' }}</option></select>
+      <select v-model="uF.ambito" class="inp !py-2 text-[12.5px]"><option value="">Ámbito: todos</option><option value="provincia">Provincial</option><option value="municipio">Municipal</option><option value="distrito">Distrital</option></select>
+      <button class="btn-o btn-s" @click="uF = { q: '', rol: '', prov: '', mun: '', jce: '', ambito: '' }">Limpiar</button>
+    </div>
+
+    <div v-if="solis.length" class="card overflow-hidden border-amber-200">
+      <div class="p-4 border-b border-line bg-amber-50/60 flex items-center gap-2">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Solicitudes de PIN pendientes</h3>
+        <span class="badge border-amber-300 bg-amber-100 text-amber-900">{{ solis.length }}</span>
+        <button class="btn-o btn-s" @click="cargarSolis">Actualizar</button>
+      </div>
+      <table class="w-full">
+        <tbody>
+          <tr v-for="sx in solis" :key="sx.id" class="border-b border-line/60">
+            <td class="td font-semibold">{{ sx.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ fmtCed(sx.cedula) }}</span></td>
+            <td class="td text-mut text-[12px] whitespace-nowrap">{{ rolLbl[sx.rol] || '' }}</td>
+            <td class="td text-mut text-[12px] whitespace-nowrap">{{ fechaHora(sx.created_at) }}</td>
+            <td class="td text-right whitespace-nowrap">
+              <button v-if="sx.rol && sx.rol !== 'admin_sne'" class="btn-p btn-s" @click="resetPin({ cedula: sx.cedula, nombre: sx.nombre, rol: sx.rol, telefono: sx.telefono, municipio_id: null })">↺ Restablecer y enviar</button>
+              <span v-else class="text-[11.5px] text-mut">Sin acceso registrado</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="px-4 py-2.5 text-[11px] text-mut border-t border-line">Solicitadas desde la pantalla de acceso. Al restablecer, la solicitud se cierra sola.</div>
+    </div>
+
+
+    <div class="card overflow-hidden">
+      <div class="px-4 py-2.5 bg-fp-25 border-b border-fp-100 text-[11.5px] text-ink/80 leading-relaxed">
+        <b>El PIN solo se ve una vez, al crearlo o al generarlo de nuevo.</b> Queda cifrado de forma irreversible: nadie —ni la Comisión— puede leerlo después.
+        Usa <b class="text-fp-800">↺ PIN nuevo</b> cuando la persona no recuerde el suyo; <b>📱 Reenviar</b> manda solo el enlace, para quien ya lo tiene.
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[980px]">
+          <thead class="bg-paper border-b border-line"><tr>
+            <th class="th">Nombre</th><th class="th">Cédula</th><th class="th">Rol</th><th class="th">Territorio · Ámbito · Contacto</th><th class="th">Último acceso</th>
+              <th class="th text-center">Instructivo</th><th class="th">Estado</th><th class="th text-right">Acciones</th>
+          </tr></thead>
+          <tbody>
+            <tr v-for="u in usrsView" :key="u.id" class="border-b border-line/70">
+              <td class="td font-semibold">{{ u.nombre }}<span class="block text-[10.5px] text-mut font-normal">{{ u.telefono || '' }}</span></td>
+              <td class="td tabular-nums whitespace-nowrap">{{ fmtCed(u.cedula) }}</td>
+              <td class="td whitespace-nowrap">
+                <div>{{ rolLbl[u.rol] }}</div>
+                <span class="inline-flex items-center gap-1 mt-1">
+                  <span class="w-5 h-5 rounded-md grid place-items-center border"
+                        :class="capacidad(u).digita ? 'bg-fp-600 text-white border-fp-600' : 'bg-paper text-line border-line'"
+                        :title="capacidad(u).digita ? 'Puede registrar postulantes' : 'No puede registrar postulantes'">
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  </span>
+                  <span class="w-5 h-5 rounded-md grid place-items-center bg-fp-50 text-fp-700 border border-fp-200"
+                        title="Puede consultar su territorio">
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </span>
+                  <span class="w-5 h-5 rounded-md grid place-items-center border"
+                        :class="capacidad(u).imprime ? 'bg-ink/5 text-ink/70 border-line' : 'bg-paper text-line border-line'"
+                        :title="capacidad(u).imprime ? 'Puede imprimir listados y reportes' : 'No puede imprimir'">
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+                  </span>
+                </span>
+              </td>
+                              <td class="td">
+                  <div class="text-[13px]">{{ territorioDe(u) }}</div>
+                  <div class="text-[11px] text-mut flex flex-wrap items-center gap-1.5 mt-0.5">
+                    <span v-if="u.circ_codigo" class="badge border-fp-200 bg-fp-50 text-fp-800">Circ. {{ u.circ_codigo }}</span>
+                    <span v-if="u.jce_id" class="badge border-line bg-paper text-mut">Distrito</span>
+                    <span v-else-if="u.municipio_id" class="badge border-line bg-paper text-mut">Municipio</span>
+                    <span v-else-if="u.provincia_id" class="badge border-line bg-paper text-mut">Provincial</span>
+                    <span v-if="u.telefono">{{ fmtTel(u.telefono) }}</span>
+                  </div>
+                </td>
+              <td class="td whitespace-nowrap"><span v-if="u.ultimo_acceso" class="text-[12px]">{{ fechaHora(u.ultimo_acceso) }}</span><span v-else class="badge border-amber-200 bg-amber-50 text-amber-800">Nunca</span></td>
+              <td class="td text-center">
+                <span v-if="u.acuse_instructivo" class="text-[11.5px] font-semibold text-fp-700 whitespace-nowrap">✓ {{ fecha(u.acuse_instructivo) }}</span>
+                <span v-else class="badge border-amber-200 bg-amber-50 text-amber-800">Pendiente</span>
+              </td>
+              <td class="td"><button class="badge cursor-pointer" :class="u.activo ? 'border-fp-200 bg-fp-50 text-fp-800' : 'border-red-200 bg-red-50 text-red-700'" @click="toggleActivo(u)">{{ u.activo ? 'Activo' : 'Inactivo' }}</button></td>
+              <td class="td text-right whitespace-nowrap">
+                <button class="btn-o btn-s mr-1" title="Editar usuario" @click="abrirEdicion(u)">✎ Editar</button>
+                <button v-if="u.rol !== 'admin_sne'" class="btn-p btn-s mr-1 !bg-[#25D366] hover:!bg-[#1ebe5b]" title="Genera un PIN nuevo, lo muestra y lo envía por WhatsApp" @click="resetPin(u)">↺ PIN nuevo</button>
+                <button class="btn-o btn-s mr-1" title="Reenvía solo el enlace, sin PIN" @click="waAcceso(u)">📱 Reenviar</button>
+                <button class="btn-o btn-s" @click="copiarAcceso(u)">Copiar</button>
+              </td>
+            </tr>
+            <tr v-if="!usrsView.length && !uBusy"><td colspan="8" class="td text-center text-mut py-10">Sin usuarios. Crea el primero con <b>Nuevo usuario</b>.</td></tr>
+            <tr v-if="uBusy"><td colspan="8" class="td text-center text-mut py-10">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="text-[11px] text-mut px-1">El restablecimiento de PIN olvidado se habilita en la Fase 3 (función administrativa). Mientras tanto, puedes crear nuevamente el acceso desde el panel de Supabase si fuese necesario.</p>
+
+    <!-- ═ Modal: crear usuario ═ -->
+    <div v-if="ed" class="modal fixed inset-0 z-50 bg-ink/40 p-3 sm:p-6 flex items-start sm:items-center justify-center overflow-y-auto" @click.self="ed = null">
+      <div class="card w-full max-w-lg p-5 my-auto">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-serif font-bold text-[17px]">Editar usuario</h3>
+            <p class="text-[12px] text-mut">{{ fmtCed(ed.cedula) }} · la cédula no se modifica</p>
+          </div>
+          <button class="w-8 h-8 rounded-lg border border-line grid place-items-center text-mut hover:text-ink" @click="ed = null">✕</button>
+        </div>
+
+        <div class="space-y-3">
+          <div><label class="lbl">Nombre completo</label><input v-model="ed.nombre" class="inp"></div>
+          <div><label class="lbl">Teléfono / WhatsApp</label><input v-model="ed.telefono" class="inp" placeholder="809-000-0000"></div>
+          <div>
+            <label class="lbl">Rol</label>
+            <select v-model="ed.rol" class="inp">
+              <option v-for="(l, k) in rolLbl" :key="k" :value="k" :disabled="k === 'admin_sne'">{{ l }}</option>
+            </select>
+          </div>
+
+          <div v-if="['presidente','secretario_general','enc_electoral'].includes(ed.rol)">
+            <label class="lbl">Ámbito de su cargo</label>
+            <select v-model="ed.ambito" class="inp" @change="ed.mun = 0; ed.jce = 0; ed.prov = 0; edDists = []">
+              <option value="municipio">Municipio o distrito</option>
+              <option value="provincia">Provincia completa</option>
+            </select>
+          </div>
+
+          <div v-if="['presidente','secretario_general','enc_electoral'].includes(ed.rol) && ed.ambito === 'provincia'">
+            <label class="lbl">Provincia</label>
+            <select v-model.number="ed.prov" class="inp">
+              <option :value="0">Seleccionar…</option>
+              <option v-for="p in provsOf('')" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+            </select>
+          </div>
+
+          <div v-if="['presidente','secretario_general','enc_electoral'].includes(ed.rol) && ed.ambito !== 'provincia'">
+            <label class="lbl">Municipio</label>
+            <select v-model.number="ed.mun" class="inp" @change="edCargarDists(ed.mun)">
+              <option :value="0">Seleccionar…</option>
+              <optgroup v-for="g in catGrupos" :key="g.prov" :label="g.prov">
+                <option v-for="m in g.items" :key="m.municipio_id" :value="m.municipio_id">{{ m.nombre }}{{ m.tipo === 'OCLEE' ? ' · OCLEE' : '' }}</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div v-if="edCircs.length > 1 && ed.ambito !== 'provincia'">
+            <label class="lbl">Circunscripción</label>
+            <select v-model="ed.circ" class="inp">
+              <option value="">Todo el municipio</option>
+              <option v-for="c in edCircs" :key="c.circ_codigo" :value="c.circ_codigo">{{ c.circ_nombre || ('Circunscripción ' + c.circ_codigo) }}</option>
+            </select>
+          </div>
+
+          <div v-if="['presidente','secretario_general','enc_electoral'].includes(ed.rol) && ed.ambito !== 'provincia' && edDists.length > 1">
+            <label class="lbl">Distrito (si se elige, la persona solo verá ese distrito)</label>
+            <select v-model.number="ed.jce" class="inp">
+              <option :value="0">Todo el municipio</option>
+              <option v-for="d in edDists" :key="d.jce_id" :value="d.jce_id">{{ d.nombre }}{{ d.es_dm ? ' · DM' : '' }} — {{ d.colegios }} colegios</option>
+            </select>
+          </div>
+
+          <div v-if="ed.rol === 'supervisor_provincial'">
+            <label class="lbl">Provincia</label>
+            <select v-model.number="ed.prov" class="inp">
+              <option :value="0">Seleccionar…</option>
+              <option v-for="p in provsOf('')" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+            </select>
+          </div>
+
+          <div v-if="ed.rol === 'coordinador_regional'">
+            <label class="lbl">Región</label>
+            <select v-model="ed.region" class="inp">
+              <option value="">Seleccionar…</option>
+              <option v-for="r in regiones" :key="r" :value="r">{{ r }}</option>
+            </select>
+          </div>
+
+          <div class="rounded-xl border border-line bg-paper p-3 space-y-2">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-mut">Configuración</div>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" v-model="ed.verD" class="accent-fp-600 w-4 h-4">
+              <span class="text-[12.5px] leading-snug">Ver el desglose por <b>distrito</b> de su municipio<span class="block text-[11px] text-mut">Activado: ve la tabla de sus distritos y puede filtrar por cada uno. Desactivado: ve el municipio como un solo bloque.</span></span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" :checked="ed.puedeImp !== false" @change="ed.puedeImp = $event.target.checked ? null : false" class="accent-fp-600 w-4 h-4">
+              <span class="text-[12.5px]">Autorizar a <b>imprimir</b> listados y reportes</span>
+            </label>
+            <label class="flex items-start gap-2 cursor-pointer rounded-lg border p-2.5 transition-colors"
+                   :class="regEfectivo(ed) ? 'border-fp-300 bg-fp-25' : 'border-line bg-white'">
+              <input type="checkbox" :checked="regEfectivo(ed)"
+                     @change="ed.puedeReg = $event.target.checked ? true : false"
+                     class="accent-fp-600 mt-0.5 w-4 h-4">
+              <span class="text-[12.5px] leading-snug">
+                Puede <b>registrar</b> postulantes
+                <span class="block text-[11px] text-mut mt-0.5">
+                  Por norma registra el Encargado(a) Electoral de un municipio o distrito.
+                  La dirigencia provincial, los presidentes y los secretarios consultan e imprimen.
+                </span>
+              </span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" v-model="ed.activo" class="accent-fp-600 w-4 h-4">
+              <span class="text-[12.5px]">Acceso <b>activo</b></span>
+            </label>
+          </div>
+
+          <div v-if="edErr" class="errbx">{{ edErr }}</div>
+
+          <div class="flex gap-2 pt-1">
+            <button class="btn-p flex-1" :disabled="edBusy" @click="guardarEdicion">{{ edBusy ? 'Guardando…' : 'Guardar cambios' }}</button>
+            <button class="btn-o" @click="ed = null">Cancelar</button>
+          </div>
+          <div class="rounded-xl border border-line bg-paper p-3 space-y-2">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-mut">PIN de acceso</div>
+            <label class="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" v-model="ed.forzar" class="accent-fp-600 mt-0.5 w-4 h-4">
+              <span class="text-[12.5px] leading-snug">Obligar a crear un <b>PIN nuevo</b> en el próximo ingreso<span class="block text-[11px] text-mut">Mantiene su PIN actual, pero el sistema no lo dejará avanzar hasta que lo cambie.</span></span>
+            </label>
+            <button v-if="ed.rol !== 'admin_sne'" class="btn-o btn-s w-full" @click="resetDesdeEdicion">↺ Generar un PIN nuevo y enviarlo por WhatsApp</button>
+            <p class="text-[11px] text-mut leading-relaxed">Nadie puede ver el PIN actual — está cifrado de forma irreversible. Solo se puede reemplazar.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showCrear" class="modal fixed inset-0 z-50 bg-ink/40 p-3 sm:p-6 flex items-start sm:items-center justify-center overflow-y-auto" @click.self="showCrear = false">
+      <div class="card w-full max-w-lg max-h-[92vh] overflow-y-auto">
+        <div class="p-4 border-b border-line flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
+          <div class="font-serif font-bold text-[16px]">Nuevo usuario territorial</div>
+          <button class="w-8 h-8 rounded-lg border border-line grid place-items-center text-mut hover:text-ink" @click="showCrear = false">✕</button>
+        </div>
+
+        <div v-if="!cuOk" class="p-4 space-y-3.5">
+          <div>
+            <label class="lbl">Cédula</label>
+            <div class="flex gap-2">
+              <input v-model="cu.ced" class="inp" inputmode="numeric" placeholder="000-0000000-0" @keyup.enter="buscarCedU">
+              <button class="btn-o shrink-0" @click="buscarCedU" :disabled="cuBusy">Verificar</button>
+            </div>
+            <div v-if="cu.lkpU && cu.lkpU.encontrado" class="okbx mt-2 !py-2 text-[12.5px]">✓ {{ cu.lkpU.nombres }} {{ cu.lkpU.apellido1 }} · vota en {{ cu.lkpU.municipio_app || cu.lkpU.jce_municipio }}</div>
+            <div v-if="cu.lkpU && !cu.lkpU.encontrado" class="errbx mt-2 !py-2 text-[12.5px]">Cédula no encontrada en el padrón. Verifícala antes de continuar.</div>
+          </div>
+          <div><label class="lbl">Nombre completo</label><input v-model="cu.nombre" class="inp" placeholder="Se completa desde el padrón"></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="lbl">Teléfono</label><input v-model="cu.telefono" class="inp" inputmode="tel"></div>
+            <div><label class="lbl">Rol</label><select v-model="cu.rol" class="inp"><option v-for="(l, k) in rolLbl" :key="k" :value="k">{{ l }}</option></select></div>
+          </div>
+          <div v-if="['presidente','secretario_general','enc_electoral'].includes(cu.rol)">
+            <label class="lbl">Municipio / DM / OCLEE</label>
+            <select v-model.number="cu.mun" class="inp" @change="cargarDistsU(cu.mun)">
+              <option :value="0" disabled>Seleccionar…</option>
+              <optgroup v-for="g in catGrupos" :key="g.prov" :label="g.prov"><option v-for="m in g.items" :key="m.municipio_id" :value="m.municipio_id">{{ m.nombre }}{{ m.tipo === 'OCLEE' ? ' · OCLEE' : '' }}</option></optgroup>
+            </select>
+            <div v-if="distsU.length > 1" class="mt-2">
+              <label class="lbl">Distrito (opcional · si se elige, la persona solo verá ese distrito)</label>
+              <select v-model.number="cu.jce" class="inp">
+                <option :value="0">Todo el municipio</option>
+                <option v-for="d in distsU" :key="d.jce_id" :value="d.jce_id">{{ d.nombre }}{{ d.es_dm ? ' · DM' : '' }} — {{ d.colegios }} colegios</option>
+              </select>
+            </div>
+            <div class="mt-3 rounded-xl border border-line bg-paper p-3 space-y-2">
+              <div class="text-[11px] font-bold uppercase tracking-wider text-mut">Configuración de alcance</div>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" v-model="cu.verD" class="accent-fp-600 w-4 h-4">
+                <span class="text-[12.5px] leading-snug">Ver el desglose por <b>distrito</b> de su municipio<span class="block text-[11px] text-mut">Activado: ve la tabla de sus distritos y puede filtrar por cada uno. Desactivado: ve el municipio como un solo bloque.</span></span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" :checked="cu.puedeImp !== false" @change="cu.puedeImp = $event.target.checked ? null : false" class="accent-fp-600 w-4 h-4">
+                <span class="text-[12.5px]">Autorizar a <b>imprimir</b> listados y reportes</span>
+              </label>
+              <label v-if="!['enc_electoral','admin_sne'].includes(cu.rol)"
+                     class="flex items-start gap-2 cursor-pointer rounded-lg border p-2.5 transition-colors"
+                     :class="cu.puedeReg === true ? 'border-amber-300 bg-amber-50' : 'border-line bg-white'">
+                <input type="checkbox" :checked="cu.puedeReg === true" @change="cu.puedeReg = $event.target.checked ? true : null" class="accent-amber-600 mt-0.5 w-4 h-4">
+                <span class="text-[12.5px] leading-snug">
+                  <b>Excepción:</b> autorizar además a <b>registrar</b> postulantes
+                  <span class="block text-[11px] text-mut mt-0.5">Por norma solo registra el Encargado(a) Electoral. Deja esta casilla <b>sin marcar</b> salvo instrucción expresa de la Comisión.</span>
+                </span>
+              </label>
+            </div>
+            <div v-if="cu.lkpU?.encontrado && cu.mun && cu.lkpU.municipio_app_id && cu.lkpU.municipio_app_id !== cu.mun" class="warn mt-2 !py-2 text-[12px]">Ojo: según el padrón vota en <b>{{ cu.lkpU.municipio_app }}</b>, distinto al territorio asignado.</div>
+          </div>
+          <div v-if="cu.rol === 'supervisor_provincial'"><label class="lbl">Provincia</label><select v-model.number="cu.prov" class="inp"><option :value="0" disabled>Seleccionar…</option><option v-for="p in provsOf('')" :key="p.id" :value="p.id">{{ p.nombre }}</option></select></div>
+          <div v-if="cu.rol === 'coordinador_regional'"><label class="lbl">Región</label><select v-model="cu.region" class="inp"><option value="" disabled>Seleccionar…</option><option v-for="r in regiones" :key="r" :value="r">{{ r }}</option></select></div>
+          <div>
+            <label class="lbl">PIN inicial · se muestra una sola vez al crear</label>
+            <div class="flex gap-2"><input v-model="cu.pin" class="inp font-mono tracking-widest"><button class="btn-o shrink-0" @click="cu.pin = genPin()">↻</button></div>
+            <div class="text-[11px] text-mut mt-1">El sistema le exigirá cambiarlo en su primer ingreso.</div>
+          </div>
+          <div v-if="cuErr" class="errbx text-[12.5px]">{{ cuErr }}</div>
+          <div v-if="cuPend" class="warn text-[12px]">La cuenta de acceso se creó pero el perfil no se guardó. <button class="underline font-bold" @click="reintentarPerfil">Reintentar guardar perfil</button></div>
+          <button class="btn-p w-full" :disabled="cuBusy || !cu.ced || !cu.nombre || !cu.pin" @click="crearUsuario">{{ cuBusy ? 'Creando…' : 'Crear acceso' }}</button>
+        </div>
+
+        <div v-else class="p-4 space-y-3">
+          <div class="okbx"><b>{{ cuOk.reset ? 'PIN restablecido.' : 'Acceso creado.' }}</b> Comparte este mensaje por WhatsApp con {{ cuOk.nombre }}:</div>
+
+          <div class="rounded-xl border-2 border-fp-600 bg-fp-25 p-4 my-3 text-center">
+            <div class="text-[10.5px] font-bold uppercase tracking-[0.18em] text-fp-700 mb-1">PIN inicial · anótalo ahora</div>
+            <div class="font-mono text-[30px] font-bold tracking-[0.3em] text-ink select-all">{{ cuOk.pin }}</div>
+            <button class="btn-o btn-s mt-2" @click="copiar(cuOk.pin)">Copiar solo el PIN</button>
+            <p class="text-[11px] text-mut mt-2 leading-relaxed">Este PIN <b>no se puede volver a ver</b>: queda cifrado de forma irreversible. Si se pierde, se restablece con el botón <b>↺ PIN</b> de la fila.</p>
+          </div>
+          <textarea class="inp min-h-[190px] text-[12.5px] font-mono" readonly :value="cuOk.msg"></textarea>
+          <div class="flex gap-2">
+            <a class="btn-p flex-1 text-center !bg-[#25D366] hover:!bg-[#1ebe5b]" :href="waLink(cuOk.tel, cuOk.msg)" target="_blank" rel="noopener">📱 Enviar por WhatsApp</a>
+            <button class="btn-p flex-1" @click="copiar(cuOk.msg)">Copiar mensaje</button>
+            <button class="btn-o" @click="cuOk = null; showCrear = false">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Consultas por WhatsApp -->
+    <div class="card overflow-hidden">
+      <div class="p-4 border-b border-line flex flex-wrap items-center gap-2 cursor-pointer" @click="waOpen = !waOpen">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Asistente de consulta</h3>
+        <span class="chip">{{ wa.filter(w => w.activo).length + tg.filter(w => w.activo).length }} autorizados</span>
+        <span class="text-mut text-[13px]">{{ waOpen ? '▴' : '▾' }}</span>
+      </div>
+
+      <div v-if="waOpen">
+        <div class="px-4 py-3 bg-fp-25 border-b border-fp-100 text-[11.5px] text-ink/80 leading-relaxed">
+          Quien esté autorizado puede consultar el avance de su territorio desde el celular, escribiéndole al asistente
+          la palabra <b>avance</b> para el resumen nacional, o el nivel seguido del nombre —<b>región</b>, <b>provincia</b>
+          o <b>municipio</b>— para ver esa demarcación con su cobertura de colegios.
+          <span class="block mt-1">Las respuestas contienen <b>solo cifras de avance</b>: nunca nombres, cédulas ni datos de contacto.
+          Quien tenga alcance de <b>Administración</b> puede además restablecer el PIN de un usuario. Cada consulta queda registrada en Actividad.</span>
+        </div>
+
+        <div class="px-4 pt-3 flex gap-2">
+          <button class="btn-s" :class="canal === 'whatsapp' ? 'btn-p' : 'btn-o'" @click="canal = 'whatsapp'">WhatsApp</button>
+          <button class="btn-s" :class="canal === 'telegram' ? 'btn-p' : 'btn-o'" @click="canal = 'telegram'">Telegram</button>
+        </div>
+
+        <div v-if="canal === 'whatsapp'" class="p-4 border-b border-line grid sm:grid-cols-2 lg:grid-cols-4 gap-2 items-end">
+          <div>
+            <label class="lbl">Teléfono</label>
+            <input v-model="waF.tel" class="inp !py-2 text-[13px]" placeholder="809 555 1234" inputmode="numeric">
+          </div>
+          <div>
+            <label class="lbl">Usuario del portal</label>
+            <select v-model="waF.ced" class="inp !py-2 text-[13px]" @change="alElegirUsrWa">
+              <option value="">Sin enlazar (externo)</option>
+              <option v-for="u in usrsEnlazables" :key="u.id" :value="u.cedula">{{ u.nombre }} — {{ rolLbl[u.rol] || u.rol }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl">Descripción</label>
+            <input v-model="waF.desc" class="inp !py-2 text-[13px]" placeholder="Ej. Coordinador Región Sur">
+          </div>
+          <div>
+            <label class="lbl">Alcance</label>
+            <select v-model="waF.rol" class="inp !py-2 text-[13px]">
+              <option value="consulta">Consulta de avance</option>
+              <option value="admin">Administración (además restablece PIN)</option>
+            </select>
+          </div>
+          <button class="btn-p !py-2" :disabled="waBusy" @click="guardarWa">{{ waBusy ? 'Autorizando…' : '+ Autorizar número' }}</button>
+          <div v-if="waErr" class="errbx sm:col-span-2 lg:col-span-5">{{ waErr }}</div>
+        </div>
+
+        <div v-if="canal === 'whatsapp'" class="overflow-x-auto">
+          <table class="w-full min-w-[620px]">
+            <thead class="bg-paper border-b border-line"><tr>
+              <th class="th">Número</th><th class="th">¿De quién es? · Usuario enlazado</th><th class="th">Alcance</th>
+              <th class="th">Última consulta</th><th class="th text-right">Acciones</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="w in wa" :key="w.telefono" class="border-b border-line/60" :class="w.activo ? '' : 'opacity-55'">
+                <td class="td font-mono text-[12.5px] whitespace-nowrap">{{ waPretty(w.telefono) }}</td>
+                <td class="td">
+                  <div class="font-semibold">{{ w.descripcion }}</div>
+                  <div v-if="w.cedula" class="text-[11px] text-fp-700">↳ {{ nombreDeCedula(w.cedula) || fmtCed(w.cedula) }}</div>
+                  <div v-else class="text-[11px] text-mut">Sin enlazar a un usuario</div>
+                </td>
+                <td class="td">
+                  <span class="badge" :class="w.rol === 'admin' ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-line bg-paper text-mut'">
+                    {{ w.rol === 'admin' ? 'Administración' : 'Consulta' }}
+                  </span>
+                </td>
+                <td class="td text-[12px] text-mut whitespace-nowrap">{{ w.ultimo_uso ? fechaHora(w.ultimo_uso) : 'Sin consultas aún' }}</td>
+                <td class="td text-right whitespace-nowrap">
+                  <button class="btn-o btn-s mr-1" @click="waEstado(w)">{{ w.activo ? 'Revocar' : 'Reactivar' }}</button>
+                  <button class="btn-o btn-s" @click="waBaja(w)">Eliminar</button>
+                </td>
+              </tr>
+              <tr v-if="!wa.length"><td colspan="5" class="td text-center text-mut py-8">Ningún número autorizado todavía.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-if="canal === 'whatsapp'" class="px-4 py-2.5 text-[11px] text-mut border-t border-line">
+          Mientras se use la línea de prueba de Meta, el número debe estar registrado también del lado de Meta.
+        </div>
+
+        <!-- Telegram -->
+        <div v-if="canal === 'telegram'" class="p-4 border-b border-line grid sm:grid-cols-2 lg:grid-cols-5 gap-2 items-end">
+          <div>
+            <label class="lbl">Identificador de chat</label>
+            <input v-model="tgF.chat" class="inp !py-2 text-[13px]" placeholder="Ej. 1234567890" inputmode="numeric">
+          </div>
+          <div>
+            <label class="lbl">Usuario del portal</label>
+            <select v-model="tgF.ced" class="inp !py-2 text-[13px]" @change="alElegirUsrTg">
+              <option value="">Sin enlazar (externo)</option>
+              <option v-for="u in usrsEnlazables" :key="u.id" :value="u.cedula">{{ u.nombre }} — {{ rolLbl[u.rol] || u.rol }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl">Descripción</label>
+            <input v-model="tgF.desc" class="inp !py-2 text-[13px]" placeholder="Ej. Coordinador Región Sur">
+          </div>
+          <div>
+            <label class="lbl">Alcance</label>
+            <select v-model="tgF.rol" class="inp !py-2 text-[13px]">
+              <option value="consulta">Consulta de avance</option>
+              <option value="admin">Administración (además restablece PIN)</option>
+            </select>
+          </div>
+          <button class="btn-p !py-2" :disabled="tgBusy" @click="guardarTg">{{ tgBusy ? 'Autorizando…' : '+ Autorizar acceso' }}</button>
+          <div v-if="tgErr" class="errbx sm:col-span-2 lg:col-span-5">{{ tgErr }}</div>
+          <div class="sm:col-span-2 lg:col-span-5 text-[11px] text-mut">
+            La persona obtiene su identificador escribiéndole <b>/id</b> al asistente; te lo comparte y lo registras aquí.
+          </div>
+        </div>
+
+        <div v-if="canal === 'telegram'" class="overflow-x-auto">
+          <table class="w-full min-w-[620px]">
+            <thead class="bg-paper border-b border-line"><tr>
+              <th class="th">Identificador</th><th class="th">¿De quién es? · Usuario enlazado</th><th class="th">Alcance</th>
+              <th class="th">Última consulta</th><th class="th text-right">Acciones</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="w in tg" :key="w.chat_id" class="border-b border-line/60" :class="w.activo ? '' : 'opacity-55'">
+                <td class="td font-mono text-[12.5px] whitespace-nowrap">{{ w.chat_id }}</td>
+                <td class="td">
+                  <div class="font-semibold">{{ w.descripcion }}</div>
+                  <div v-if="w.cedula" class="text-[11px] text-fp-700">↳ {{ nombreDeCedula(w.cedula) || fmtCed(w.cedula) }}</div>
+                  <div v-else class="text-[11px] text-mut">Sin enlazar a un usuario</div>
+                </td>
+                <td class="td">
+                  <span class="badge" :class="w.rol === 'admin' ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-line bg-paper text-mut'">
+                    {{ w.rol === 'admin' ? 'Administración' : 'Consulta' }}
+                  </span>
+                </td>
+                <td class="td text-[12px] text-mut whitespace-nowrap">{{ w.ultimo_uso ? fechaHora(w.ultimo_uso) : 'Sin consultas aún' }}</td>
+                <td class="td text-right whitespace-nowrap">
+                  <button class="btn-o btn-s mr-1" @click="tgEstado(w)">{{ w.activo ? 'Revocar' : 'Reactivar' }}</button>
+                  <button class="btn-o btn-s" @click="tgBaja(w)">Eliminar</button>
+                </td>
+              </tr>
+              <tr v-if="!tg.length"><td colspan="5" class="td text-center text-mut py-8">Ningún acceso autorizado todavía.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Permisos por rol ══ -->
+
+    <!-- ══ Traslados: hasta dónde puede moverse un postulante ══ -->
+    <section id="config-traslados" class="card p-4 scroll-mt-20">
+      <h3 class="font-serif text-[17px] font-bold mb-1">Traslados entre demarcaciones</h3>
+      <p class="text-[12px] text-mut mb-4 max-w-[76ch]">
+        Cada postulante tiene dos territorios: dónde vota, que es un dato de la Junta y no cambia, y dónde
+        trabajará, que decide el partido. Aquí se define hasta dónde puede moverse una persona respecto al
+        colegio donde vota.
+      </p>
+
+      <div class="grid gap-2 sm:grid-cols-2">
+        <label v-for="(txt, k) in alcanceLbl" :key="k"
+               class="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-colors"
+               :class="cfgTr.alcance === k ? 'border-fp-400 bg-fp-25' : 'border-line bg-white hover:border-fp-200'">
+          <input type="radio" :value="k" v-model="cfgTr.alcance" class="accent-fp-600 w-4 h-4 mt-0.5" @change="guardarCfgTr">
+          <span class="min-w-0">
+            <b class="text-[13.5px]">{{ txt }}</b>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">
+              {{ {
+                colegio:   'Nadie trabaja fuera de donde vota. El más estricto: cada delegado conoce su mesa y sus vecinos.',
+                municipio: 'Puede cubrir otro colegio de su misma demarcación. Útil donde sobra gente en un recinto y falta en otro.',
+                provincia: 'Traslados entre municipios de la misma provincia sin trámite. Equilibra cobertura y arraigo local.',
+                libre:     'Sin restricción territorial. Todo queda registrado igualmente.'
+              }[k] }}
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-line">
+        <p class="text-[13.5px] font-semibold mb-1">Colegio donde trabajará</p>
+        <p class="text-[11.5px] text-mut mb-2.5 max-w-[74ch]">
+          Cada postulante cuenta para un colegio concreto. Cuando vota en el territorio donde se le
+          registra, el sistema se lo asigna solo. Aquí se decide cuándo pedirle al encargado que elija.
+        </p>
+        <select v-model="cfgTr.modo_asignacion" class="inp !py-2 text-[13px] max-w-[420px]" @change="guardarCfgTr">
+          <option value="automatico">Automático · no pregunta nunca</option>
+          <option value="si_difiere">Preguntar solo si la persona vota fuera · recomendado</option>
+          <option value="siempre">Preguntar en cada registro</option>
+        </select>
+        <p class="text-[11px] text-mut mt-1.5 leading-snug">
+          {{ {
+            automatico: 'Quien vote fuera del territorio quedará sin colegio asignado y no contará para ninguna mesa. Úsalo solo si la asignación se hará después.',
+            si_difiere: 'El trabajo diario no cambia: la mayoría se asigna sola. Solo se pide colegio cuando la persona viene de otra demarcación.',
+            siempre:    'Permite repartir gente entre colegios del mismo municipio. Añade un paso a cada registro.'
+          }[cfgTr.modo_asignacion] }}
+        </p>
+      </div>
+
+      <label class="flex items-start gap-2.5 rounded-xl border p-3 mt-3 cursor-pointer transition-colors"
+             :class="cfgTr.requiere_autorizacion ? 'border-amber-300 bg-amber-50' : 'border-line bg-white'">
+        <input type="checkbox" v-model="cfgTr.requiere_autorizacion" class="accent-amber-600 w-4 h-4 mt-0.5" @change="guardarCfgTr">
+        <span>
+          <b class="text-[13.5px]">Lo que exceda el límite requiere autorización de la SNE</b>
+          <span class="block text-[11.5px] text-mut leading-snug mt-0.5">
+            Activado: el registro se guarda como pendiente y espera aprobación en la bandeja de traslados.
+            Desactivado: el traslado se permite sin trámite, aunque queda igualmente registrado y es consultable.
+          </span>
+        </span>
+      </label>
+
+      <p v-if="cfgTr.actualizado_por" class="text-[11px] text-mut mt-2.5">
+        Última modificación por {{ cfgTr.actualizado_por }}
+      </p>
+      <p v-if="cfgBusy" class="text-[11px] text-fp-700 mt-2">Guardando…</p>
+    </section>
+
+    <!-- ══ Marca de agua por documento ══ -->
+    <section id="config-sello" class="card p-4 scroll-mt-20">
+      <h3 class="font-serif text-[17px] font-bold mb-1">Marca de agua en los documentos</h3>
+      <p class="text-[12px] text-mut mb-4 max-w-[76ch]">
+        La marca existe para rastrear fugas: si un listado con nombres y cédulas circula donde no debe,
+        indica quién lo imprimió y cuándo. En documentos sin datos personales no cumple esa función.
+        La emisión queda registrada en la bitácora aunque el documento salga sin marca.
+      </p>
+
+      <div class="space-y-2">
+        <label v-for="d in docs" :key="d.k"
+               class="flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors"
+               :class="cfgDoc[d.k] ? 'border-fp-300 bg-fp-25' : 'border-line bg-white'">
+          <input type="checkbox" :checked="!!cfgDoc[d.k]" class="accent-fp-600 w-4 h-4 mt-0.5"
+                 @change="guardarCfgDoc(d.k, $event.target.checked)">
+          <span class="min-w-0">
+            <b class="text-[13.5px]">{{ d.t }}</b>
+            <span class="text-[11.5px] ml-2" :class="cfgDoc[d.k] ? 'text-fp-700' : 'text-mut'">
+              {{ cfgDoc[d.k] ? 'con marca' : 'sin marca' }}
+            </span>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">{{ d.d }}</span>
+          </span>
+        </label>
+      </div>
+
+      <p v-if="cfgDoc.actualizado_por" class="text-[11px] text-mut mt-2.5">
+        Última modificación por {{ cfgDoc.actualizado_por }}
+      </p>
+    </section>
+
+
+    <section id="permisos-rol" class="card p-4 scroll-mt-20">
+      <div class="flex flex-wrap items-baseline gap-2 mb-1">
+        <h3 class="font-serif text-[17px] font-bold mr-auto">Qué ve y qué imprime cada rol</h3>
+        <button class="btn-o btn-s" @click="cargarPermRol">Actualizar</button>
+      </div>
+      <p class="text-[12px] text-mut mb-3 max-w-[76ch]">
+        La estructura de delegados es información sensible: un listado con nombres y teléfonos
+        permitiría contactar individualmente a cada dirigente. Por norma solo la administración
+        ve cédulas y teléfonos completos; los demás roles ven el dato enmascarado y cada
+        revelación queda registrada. Estas reglas se aplican en el servidor, no en la pantalla.
+      </p>
+
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[820px]">
+          <thead class="bg-paper border-b border-line"><tr>
+            <th class="th">Rol</th>
+            <th class="th text-center" colspan="3">Datos que ve</th>
+            <th class="th text-center" colspan="3">Documentos que imprime</th>
+          </tr>
+          <tr class="text-[11px] text-mut">
+            <th class="px-3 pb-1.5"></th>
+            <th class="px-2 pb-1.5 font-normal text-center">Nombres</th>
+            <th class="px-2 pb-1.5 font-normal text-center">Cédula</th>
+            <th class="px-2 pb-1.5 font-normal text-center">Teléfono</th>
+            <th class="px-2 pb-1.5 font-normal text-center">Individual</th>
+            <th class="px-2 pb-1.5 font-normal text-center">Relación</th>
+            <th class="px-2 pb-1.5 font-normal text-center">Validación</th>
+          </tr></thead>
+          <tbody>
+            <tr v-for="r in permRol" :key="r.rol" class="border-b border-line/60">
+              <td class="td font-semibold whitespace-nowrap">{{ rolLbl[r.rol] || r.rol }}</td>
+              <td v-for="c in ['ver_nombres','ver_cedula','ver_telefono','imprimir_individual','imprimir_relacion','imprimir_validacion']"
+                  :key="c" class="td text-center">
+                <input type="checkbox" class="accent-fp-600 w-4 h-4 cursor-pointer"
+                       :checked="r[c]" :disabled="permBusy || r.rol === 'admin_sne'"
+                       :title="r.rol === 'admin_sne' ? 'La administración conserva acceso completo' : ''"
+                       @change="guardarPermRol(r, c, $event.target.checked)">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-[11px] text-mut mt-2.5">
+        La administración de la SNE conserva acceso completo y no puede limitarse desde aquí,
+        para que nunca quede el sistema sin nadie capaz de operarlo.
+      </p>
+    </section>
+
+
+  </section>
+</template>
