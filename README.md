@@ -226,3 +226,4 @@ portal-delegados/
 - **`npm install` da error de red** → verifica la conexión y reintenta; npm continúa donde quedó.
 - **La página abre en blanco en cPanel** → confirma que extrajiste el **contenido** del zip dentro de `/delegados/` (debe verse `index.html` directamente en esa carpeta, no una subcarpeta extra).
 - **Cambié algo y no se ve en producción** → recuerda el ciclo: `npm run empaquetar` → subir → Extract.
+# Juntas_Electorales
