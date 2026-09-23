@@ -4,9 +4,10 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-1. **Decidir el modelo de asignación**: leer `docs/ASIGNACION_DE_COLEGIOS.md` y elegir Opción 1 (el alcance configurado manda) u Opción 2 (solo admin registra fuera del municipio). Con la decisión se escribe la fase 63.
-2. **Asignar colegio a Camilo Moreta Roa (0129-00001)** en Asignación → botón «Asignar en Juan de Herrera». Incompletos pasa a 5.
-3. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
+1. **Aplicar fase 63** y comprobar que `aa_p28_control_colegio` sale primero en la lista de disparadores.
+2. **Subir `dist`** al subdominio (Registrar, Asignación y menú cambiaron).
+3. **Probar el flujo completo**: asignar a Camilo (0129-00001) con la sugerencia preseleccionada; registrar una cédula de otro municipio con un usuario encargado (no admin) y ver que ahora pasa; en Gestión → Traslados activar «requiere autorización», registrar otra de otra provincia y ver que aparece en «Esperan autorización» y no cuenta; aprobarla en Dirigencia → Traslados y ver que pasa a contar.
+4. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
 
 Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde GitHub Desktop después de cada sesión.
 
@@ -20,7 +21,6 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - **Fase 63 · control formal del colegio en el registro** (depende de la decisión del punto 1 de Próximo; hallazgo: hoy el alcance configurado es solo informativo, el encargado nunca puede registrar fuera de su municipio): disparador `before insert/update` en `postulantes_2028` que verifique que `colegio_asignado` pertenece al municipio, recalcule los datos del padrón en la base y proteja `traslado_estado`, `autorizado_por` y columnas sensibles para quien no sea admin.
 - **Fase 64 · función definer para Strategos** (`padron_buscar`, `padron_resumen_municipio`, `padron_por_cedula`) y retirar de nuevo el `select` de `jce_padron` a `authenticated`.
 - **Solicitud de PIN rota**: el botón «Solicitar» de «¿Olvidaste tu PIN?» llama a `portal_delegados_solicitar_pin`, que no existe; muestra éxito sin guardar nada. Diseñar autoservicio: cédula + código de un solo uso por WhatsApp/Telegram + PIN nuevo.
-- **`autorizado_por` semántico**: hoy lleva el nombre de quien registra aunque no hubo autorización. Decidir si se vacía cuando el estado es «permitido».
 - **Formulario impreso**: el bloque B «Trabajará en» sale vacío aunque haya `colegio_asignado`.
 - **Listado de Postulantes** no muestra el colegio asignado.
 - **Sesión en el navegador**: decidir memoria pura (documento de seguridad) o persistencia con caducidad por inactividad.
@@ -36,6 +36,7 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Hecho
 
+- Fase 63 escrita y pantallas de registro y Asignación fortalecidas (23 sep 2026): Opción 1, cuatro mejoras, contador en el menú.
 - Fase 62 aplicada (23 sep 2026); cobertura validada: 4 colegios incompletos corresponden a los 4 registros con colegio asignado.
 - Fase 62 escrita (23 sep 2026): las cuatro funciones restantes cuentan por colegio asignado.
 - Fase 61 aplicada (23 sep 2026): cobertura sin error y contada por colegio asignado.

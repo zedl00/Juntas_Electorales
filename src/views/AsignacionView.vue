@@ -5,11 +5,16 @@ import { sb } from '../lib/supabase';
 import { fmt } from '../lib/formato';
 import { t } from '../stores/toasts';
 import { cargoLbl } from '../lib/constantes';
-import { perfil, scopeAmplio } from '../stores/auth';
+import { perfil, scopeAmplio, esAdmin } from '../stores/auth';
+import { cargarSinColegio } from '../stores/kpi';
+import { useRouter } from 'vue-router';
 import { catMap } from '../stores/catalogo';
 
+const router = useRouter();
 const mun = ref(0), cargando = ref(false), err = ref('');
 const pendientes = ref([]), colegios = ref([]), resumen = ref({});
+const asignados = ref([]), pendAut = ref([]);   // con colegio (para mover) · esperan autorización de la SNE
+const movEleccion = ref({}), moviendo = ref(0), qA = ref('');
 const eleccion = ref({});          // id de postulante → colegio elegido
 const guardando = ref(0);
 const q = ref('');
@@ -28,6 +33,20 @@ const cargar = async () => {
     id ? sb.rpc('portal_colegios_territorio', { p_municipio: id, p_jce: perfil.value?.jce_id || null })
        : Promise.resolve({ data: [] })
   ]);
+  /* Con colegio (para reasignar) y traslados pendientes de la SNE: lectura directa, la RLS acota el alcance */
+  const [a, pa] = await Promise.all([
+    id ? sb.from('postulantes_2028')
+           .select('id,numero_formulario,nombres,apellido1,apellido2,cargo_postulado,telefono,colegio_asignado,traslado_estado')
+           .eq('municipio_id', id).not('colegio_asignado', 'is', null)
+           .not('estado', 'in', '("rechazado","no_aprobado")')
+           .order('apellido1').range(0, 999)
+       : Promise.resolve({ data: [] }),
+    (() => { let s = sb.from('postulantes_2028')
+           .select('id,numero_formulario,nombres,apellido1,apellido2,cargo_postulado,municipio_id,colegio_solicitado,colegio_padron_desc,created_at')
+           .eq('traslado_estado', 'pendiente').not('estado', 'in', '("rechazado","no_aprobado")')
+           .order('created_at').range(0, 999);
+           return id ? s.eq('municipio_id', id) : s; })()
+  ]);
   cargando.value = false;
   if (p.error) {
     err.value = /does not exist|Could not find/i.test(p.error.message)
@@ -38,6 +57,11 @@ const cargar = async () => {
   resumen.value = r.data || {};
   pendientes.value = p.data || [];
   colegios.value = c.data || [];
+  asignados.value = a.data || [];
+  pendAut.value = pa.data || [];
+  /* Sugerencia: el colegio con más faltantes queda preseleccionado; el encargado solo confirma */
+  const sugerido = porRecinto.value[0]?.items?.[0]?.id_colegio;
+  if (sugerido) pendientes.value.forEach(x => { if (!eleccion.value[x.id]) eleccion.value[x.id] = sugerido; });
 };
 onMounted(cargar);
 watch(munEfectivo, cargar);
@@ -72,6 +96,28 @@ const asignar = async (row) => {
   if (!data?.ok) { t(data?.msg || 'No se pudo asignar', 'err'); return; }
   t(`${row.nombre} asignado`, 'ok');
   delete eleccion.value[row.id];
+  cargar(); cargarSinColegio();
+};
+
+/* Mover a alguien que ya tiene colegio a otro colegio del mismo municipio */
+const colegioMap = computed(() => new Map(colegios.value.map(c => [c.id_colegio, c])));
+const colegioTxt = id => { const c = colegioMap.value.get(id); return c ? `${c.codigo} · ${c.recinto}` : ('Colegio ' + id); };
+const nombreDe = r => [r.nombres, r.apellido1, r.apellido2].filter(Boolean).join(' ');
+const asigVista = computed(() => {
+  const s = qA.value.trim().toLowerCase();
+  if (!s) return asignados.value;
+  return asignados.value.filter(r => nombreDe(r).toLowerCase().includes(s) || colegioTxt(r.colegio_asignado).toLowerCase().includes(s));
+});
+const mover = async (row) => {
+  const col = movEleccion.value[row.id];
+  if (!col || col === row.colegio_asignado) { t('Elige un colegio distinto', 'err'); return; }
+  moviendo.value = row.id;
+  const { data, error } = await sb.rpc('portal_reasignar_colegio', { p_postulante: row.id, p_colegio: col, p_nota: 'movido desde Asignación' });
+  moviendo.value = 0;
+  if (error) { t('Error: ' + error.message, 'err'); return; }
+  if (!data?.ok) { t(data?.msg || 'No se pudo mover', 'err'); return; }
+  t(`${nombreDe(row)} movido a ${colegioTxt(col)}`, 'ok');
+  delete movEleccion.value[row.id];
   cargar();
 };
 
@@ -163,7 +209,7 @@ const cargoTxt = c => cargoLbl[c] || c;
                 </div>
               </div>
               <div class="flex flex-wrap items-center gap-2">
-                <select v-model.number="eleccion[r.id]" class="inp !py-1.5 text-[12.5px] max-w-[280px]">
+                <select v-model.number="eleccion[r.id]" class="inp !py-1.5 text-[12.5px] max-w-[280px]" title="Viene preseleccionado el colegio con más faltantes">
                   <option :value="undefined">Elegir colegio…</option>
                   <optgroup v-for="g in porRecinto" :key="g.recinto" :label="g.recinto">
                     <option v-for="c in g.items" :key="c.id_colegio" :value="c.id_colegio">
@@ -177,6 +223,51 @@ const cargoTxt = c => cargoLbl[c] || c;
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Esperan autorización de la SNE: no cuentan hasta que se apruebe el traslado -->
+      <div v-if="pendAut.length" class="card p-4 border-amber-300">
+        <div class="flex flex-wrap items-baseline gap-2 mb-1">
+          <h3 class="font-serif font-bold text-[16px] mr-auto">Esperan autorización de la SNE · {{ fmt(pendAut.length) }}</h3>
+          <button v-if="esAdmin" class="btn-o btn-s" @click="router.push({ path: '/dirigencia', query: { v: 'traslados' } })">Ir a la bandeja de traslados →</button>
+        </div>
+        <p class="text-[12px] text-mut mb-3">Su traslado excede el alcance configurado. Tienen colegio solicitado, pero no cuentan para la cobertura hasta que la SNE apruebe.</p>
+        <div v-for="r in pendAut" :key="r.id" class="text-[12.5px] py-1.5 border-b border-line/60 last:border-0 flex flex-wrap gap-x-3">
+          <b>{{ nombreDe(r) }}</b>
+          <span class="text-mut">{{ r.numero_formulario }} · {{ cargoTxt(r.cargo_postulado) }}</span>
+          <span class="text-mut">vota en {{ r.colegio_padron_desc || '—' }}</span>
+          <span v-if="r.colegio_solicitado" class="badge border-amber-300 bg-amber-50 text-amber-800">solicita {{ colegioTxt(r.colegio_solicitado) }}</span>
+        </div>
+      </div>
+
+      <!-- Con colegio: mover entre colegios del mismo municipio -->
+      <div v-if="munEfectivo" class="card p-4">
+        <div class="flex flex-wrap items-baseline gap-2 mb-3">
+          <h3 class="font-serif font-bold text-[16px] mr-auto">Con colegio · {{ fmt(asigVista.length) }}</h3>
+          <input v-model="qA" class="inp !py-1.5 text-[12.5px] max-w-[200px]" placeholder="Buscar nombre o colegio…">
+        </div>
+        <p class="text-[12px] text-mut mb-3">Para mover a alguien a otro colegio del mismo municipio. Queda constancia en la bitácora.</p>
+        <div v-if="!asigVista.length" class="text-[13px] text-mut py-4 text-center">{{ qA ? 'Sin coincidencias.' : 'Nadie tiene colegio asignado en este territorio todavía.' }}</div>
+        <div v-else class="space-y-2">
+          <div v-for="r in asigVista" :key="r.id" class="rounded-xl border border-line p-3 flex flex-wrap items-center gap-3">
+            <div class="min-w-0 mr-auto">
+              <div class="font-semibold text-[13.5px]">{{ nombreDe(r) }}</div>
+              <div class="text-[11.5px] text-mut">{{ r.numero_formulario }} · {{ cargoTxt(r.cargo_postulado) }} · en <b>{{ colegioTxt(r.colegio_asignado) }}</b></div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <select v-model.number="movEleccion[r.id]" class="inp !py-1.5 text-[12.5px] max-w-[280px]">
+                <option :value="undefined">Mover a…</option>
+                <optgroup v-for="g in porRecinto" :key="g.recinto" :label="g.recinto">
+                  <option v-for="c in g.items" :key="c.id_colegio" :value="c.id_colegio" :disabled="c.id_colegio === r.colegio_asignado">
+                    {{ c.codigo }} — {{ c.personas }} de 3{{ c.faltan ? ' · faltan ' + c.faltan : ' · completo' }}
+                  </option>
+                </optgroup>
+              </select>
+              <button class="btn-o btn-s" :disabled="moviendo === r.id || !movEleccion[r.id]" @click="mover(r)">{{ moviendo === r.id ? 'Moviendo…' : 'Mover' }}</button>
+            </div>
+          </div>
+          <p v-if="asignados.length >= 1000" class="text-[11px] text-mut">Se muestran los primeros 1,000.</p>
         </div>
       </div>
 

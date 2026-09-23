@@ -85,4 +85,11 @@ export async function cargarCobertura() {
   cob.value = new Map((data || []).map(r => [r.municipio_id, r]));
 }
 
-export function refrescar() { cargarKpi(); cargarTerr(); cargarCobertura(); }
+/* Cuántas personas esperan colegio en el alcance del usuario (contador del menú) */
+export const sinColegio = ref(0);
+export async function cargarSinColegio() {
+  const { data } = await sb.rpc('portal_asignacion_resumen', { p_municipio: null });
+  if (data) sinColegio.value = Number(data.sin_colegio) || 0;
+}
+
+export function refrescar() { cargarKpi(); cargarTerr(); cargarCobertura(); cargarSinColegio(); }

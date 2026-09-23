@@ -3,6 +3,7 @@
 import { ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { esAdmin } from '../stores/auth';
+import { sinColegio } from '../stores/kpi';
 
 const route = useRoute();
 const router = useRouter();
@@ -50,6 +51,7 @@ watch(() => route.name, n => {
         <!-- Entrada simple -->
         <div v-else-if="!it.admin || esAdmin" class="navi" :class="{ 'navi-on': route.name === it.r }" @click="router.push({ name: it.r })">
           <span>{{ it.ic }}</span> {{ it.txt }}
+          <span v-if="it.r === 'asignacion' && sinColegio" class="ml-auto badge border-amber-300 bg-amber-50 text-amber-800 !py-0" title="Esperan colegio">{{ sinColegio }}</span>
         </div>
       </template>
     </nav>

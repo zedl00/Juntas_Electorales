@@ -76,3 +76,23 @@ Solo el administrador registra fuera del municipio. La configuración de alcance
 - Preseleccionar el colegio del propio recinto de la persona cuando le faltan personas.
 - Contador de «esperan colegio» junto a Asignación en el menú.
 - Que una persona con traslado «pendiente» se vea marcada y no cuente hasta la aprobación.
+
+## 8. Decisión y aplicación (23 de septiembre de 2026)
+
+La Comisión eligió la **Opción 1** y las cuatro mejoras de pantalla. Se aplicó así:
+
+**Fase 63 (base de datos).**
+- Disparador `aa_p28_control_colegio` en `postulantes_2028`, que corre antes que los demás: toma los datos del padrón de la Junta al insertar, calcula nivel y estado del traslado con la configuración vigente, asigna el colegio del padrón automáticamente cuando la persona vota en el mismo municipio, verifica que el colegio de trabajo pertenece al municipio de registro, y bloquea a quien no es administrador el cambio de cédula, territorio, datos del padrón, traslado, sellos y auditoría.
+- Un traslado **pendiente** guarda el colegio elegido en `colegio_solicitado` y deja `colegio_asignado` vacío: la persona **no cuenta** para la cobertura hasta que la SNE apruebe. Al aprobar en Dirigencia → Traslados, el colegio solicitado pasa a asignado y `autorizado_por` recibe el nombre de quien aprobó. Al rechazar, la persona queda sin colegio y nadie salvo la administración puede asignarle uno en ese territorio.
+- `autorizado_por` ya no lleva el nombre de quien registra: queda vacío hasta la aprobación.
+- El distrito (`jce_id`) es el del colegio donde trabajará, no el del padrón.
+
+**Pantalla de registro.** Cualquier usuario con permiso de registro puede registrar a quien vota en otro municipio. El aviso sigue apareciendo, con la casilla de constancia y el colegio obligatorio. Si excede el alcance con autorización exigida, el aviso dice que quedará pendiente.
+
+**Pantalla Asignación.**
+- «Esperan colegio»: el colegio con más faltantes viene preseleccionado; el encargado confirma o cambia.
+- «Con colegio»: lista de asignados del municipio con opción de moverlos a otro colegio del mismo municipio.
+- «Esperan autorización de la SNE»: los traslados pendientes, con el colegio solicitado y acceso directo a la bandeja para el administrador.
+- El menú lateral muestra junto a «Asignación» cuántas personas esperan colegio.
+
+**Casos 3 y 4 de la matriz** pasan a: cualquier encargado con permiso puede registrarlos eligiendo colegio. **Caso 5**: queda pendiente y no cuenta hasta aprobarse.
