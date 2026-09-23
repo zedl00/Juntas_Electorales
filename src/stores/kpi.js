@@ -81,7 +81,8 @@ export const cob = ref(new Map());   // municipio_id → { colegios, completos, 
 export async function cargarCobertura() {
   if (!scopeAmplio.value) return;
   const { data, error } = await sb.rpc('portal_cobertura_resumen');
-  if (!error) cob.value = new Map((data || []).map(r => [r.municipio_id, r]));
+  if (error) { console.error('portal_cobertura_resumen:', error.code, error.message, error.details || '', error.hint || ''); return; }
+  cob.value = new Map((data || []).map(r => [r.municipio_id, r]));
 }
 
 export function refrescar() { cargarKpi(); cargarTerr(); cargarCobertura(); }

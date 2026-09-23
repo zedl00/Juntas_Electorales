@@ -15,5 +15,5 @@ export const sb = createClient(URL, ANON, { db: { schema: 'delegados' } });
 
 /** Cliente auxiliar SIN persistencia: crea cuentas de terceros sin tocar la sesión del admin. */
 export const sbAux = createClient(URL, ANON, {
-  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'sb-aux' }
 });
