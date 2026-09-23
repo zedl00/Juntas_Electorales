@@ -68,8 +68,11 @@ export async function postLogin() {
 }
 
 /** Inicia sesión con cédula (o email de admin) + PIN. Devuelve mensaje de error o null. */
-export async function login(acceso, pin) {
-  const { data, error } = await sb.auth.signInWithPassword({ email: emailDe(acceso), password: pin });
+export async function login(acceso, pin, captchaToken = '') {
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: emailDe(acceso), password: pin,
+    ...(captchaToken ? { options: { captchaToken } } : {})
+  });
   if (error) return /invalid login/i.test(error.message) ? 'Cédula o PIN incorrectos.' : ('No se pudo iniciar sesión: ' + error.message);
   sesion.value = data.session;
   const ok = await postLogin();

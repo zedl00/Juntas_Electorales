@@ -1,6 +1,6 @@
 <!-- src/views/AccesoView.vue -->
 <script setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { login } from '../stores/auth';
 import { showInstall, isIos, instalar } from '../stores/pwa';
@@ -19,10 +19,37 @@ const solicitarPin = async () => {
   cedPin.value = '';
 };
 
+/* ── Captcha de Cloudflare (Turnstile) ──
+   Solo se activa cuando VITE_TURNSTILE_SITE_KEY está definida. Sin clave, el
+   acceso funciona igual que antes. El token es de un solo uso: tras cada
+   intento se reinicia el reto. */
+const TS_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
+const tsEl = ref(null), tsToken = ref(''), tsId = ref(null);
+const tsRender = () => {
+  if (!TS_KEY || !tsEl.value || !window.turnstile) return;
+  tsId.value = window.turnstile.render(tsEl.value, {
+    sitekey: TS_KEY, language: 'es', theme: 'light', size: 'flexible',
+    callback: tok => { tsToken.value = tok; },
+    'expired-callback': () => { tsToken.value = ''; },
+    'error-callback':   () => { tsToken.value = ''; }
+  });
+};
+onMounted(() => {
+  if (!TS_KEY) return;
+  if (window.turnstile) { tsRender(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+  s.async = true; s.onload = tsRender;
+  document.head.appendChild(s);
+});
+
 const entrar = async () => {
-  loginErr.value = ''; loginBusy.value = true;
-  const err = await login(lf.acceso, lf.pin);
+  loginErr.value = '';
+  if (TS_KEY && !tsToken.value) { loginErr.value = 'Completa la verificación de seguridad.'; return; }
+  loginBusy.value = true;
+  const err = await login(lf.acceso, lf.pin, tsToken.value);
   loginBusy.value = false;
+  if (TS_KEY && window.turnstile && tsId.value !== null) { window.turnstile.reset(tsId.value); tsToken.value = ''; }
   if (err) { loginErr.value = err; return; }
   router.push('/inicio');
 };
@@ -45,6 +72,7 @@ const entrar = async () => {
           <input id="lpin" v-model="lf.pin" class="inp" type="password" autocomplete="current-password" placeholder="••••••" required>
         </div>
         <div v-if="loginErr" class="errbx">{{ loginErr }}</div>
+        <div v-if="TS_KEY" ref="tsEl" class="min-h-[65px]"></div>
         <button class="btn-p w-full" :disabled="loginBusy">
           <span v-if="!loginBusy">Entrar</span><span v-else>Verificando…</span>
         </button>
