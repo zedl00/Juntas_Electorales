@@ -14,7 +14,13 @@ const router = useRouter();
 const mun = ref(0), cargando = ref(false), err = ref('');
 const pendientes = ref([]), colegios = ref([]), resumen = ref({});
 const asignados = ref([]), pendAut = ref([]);   // con colegio (para mover) · esperan autorización de la SNE
-const movEleccion = ref({}), moviendo = ref(0), qA = ref('');
+const movEleccion = ref({}), moviendo = ref(0), qA = ref(''), soloReub = ref(false);
+const irA = (id, reub = null) => {
+  if (reub !== null) soloReub.value = reub;
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+const territorioDe = r => catMap.value.get(r.municipio_id)?.nombre || ('Municipio ' + r.municipio_id);
 const eleccion = ref({});          // id de postulante → colegio elegido
 const guardando = ref(0);
 const q = ref('');
@@ -35,12 +41,12 @@ const cargar = async () => {
   ]);
   /* Con colegio (para reasignar) y traslados pendientes de la SNE: lectura directa, la RLS acota el alcance */
   const [a, pa] = await Promise.all([
-    id ? sb.from('postulantes_2028')
-           .select('id,numero_formulario,nombres,apellido1,apellido2,cargo_postulado,telefono,colegio_asignado,traslado_estado')
-           .eq('municipio_id', id).not('colegio_asignado', 'is', null)
+    (() => { let s = sb.from('postulantes_2028')
+           .select('id,numero_formulario,nombres,apellido1,apellido2,cargo_postulado,telefono,municipio_id,colegio_asignado,id_colegio_padron,codigo_colegio,traslado_estado')
+           .not('colegio_asignado', 'is', null)
            .not('estado', 'in', '("rechazado","no_aprobado")')
-           .order('apellido1').range(0, 999)
-       : Promise.resolve({ data: [] }),
+           .order('apellido1').range(0, 999);
+           return id ? s.eq('municipio_id', id) : s; })(),
     (() => { let s = sb.from('postulantes_2028')
            .select('id,numero_formulario,nombres,apellido1,apellido2,cargo_postulado,municipio_id,colegio_solicitado,colegio_padron_desc,created_at')
            .eq('traslado_estado', 'pendiente').not('estado', 'in', '("rechazado","no_aprobado")')
@@ -103,11 +109,15 @@ const asignar = async (row) => {
 const colegioMap = computed(() => new Map(colegios.value.map(c => [c.id_colegio, c])));
 const colegioTxt = id => { const c = colegioMap.value.get(id); return c ? `${c.codigo} · ${c.recinto}` : ('Colegio ' + id); };
 const nombreDe = r => [r.nombres, r.apellido1, r.apellido2].filter(Boolean).join(' ');
+const esReubicado = r => r.id_colegio_padron != null && r.colegio_asignado !== r.id_colegio_padron;
+const reubicados = computed(() => asignados.value.filter(esReubicado));
 const asigVista = computed(() => {
   const s = qA.value.trim().toLowerCase();
-  if (!s) return asignados.value;
-  return asignados.value.filter(r => nombreDe(r).toLowerCase().includes(s) || colegioTxt(r.colegio_asignado).toLowerCase().includes(s));
+  let base = soloReub.value ? reubicados.value : asignados.value;
+  if (!s) return base;
+  return base.filter(r => nombreDe(r).toLowerCase().includes(s) || colegioTxt(r.colegio_asignado).toLowerCase().includes(s) || territorioDe(r).toLowerCase().includes(s));
 });
+const colegioAsigTxt = r => munEfectivo.value ? colegioTxt(r.colegio_asignado) : (r.codigo_colegio && !esReubicado(r) ? r.codigo_colegio : 'colegio ' + r.colegio_asignado);
 const mover = async (row) => {
   const col = movEleccion.value[row.id];
   if (!col || col === row.colegio_asignado) { t('Elige un colegio distinto', 'err'); return; }
@@ -140,26 +150,27 @@ const cargoTxt = c => cargoLbl[c] || c;
 
     <div v-if="err" class="errbx">{{ err }}</div>
 
-    <!-- Resumen -->
+    <!-- Resumen: cada tarjeta lleva a su lista -->
+    <p class="text-[11.5px] text-mut -mb-1">Toca una tarjeta para ver y trabajar esa lista.</p>
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <div class="rounded-xl bg-fp-700 text-white px-4 py-3">
+      <div class="rounded-xl bg-fp-700 text-white px-4 py-3 cursor-pointer hover:brightness-110" @click="irA('sec-con', false)">
         <div class="text-[11px] text-fp-100/85">Registrados</div>
         <div class="text-[26px] font-bold tabular-nums leading-tight">{{ fmt(resumen.registrados || 0) }}</div>
         <div class="text-[10.5px] text-fp-100/85">en el alcance actual</div>
       </div>
-      <div class="rounded-xl bg-paper px-4 py-3">
+      <div class="rounded-xl bg-paper px-4 py-3 cursor-pointer hover:bg-fp-25" @click="irA('sec-con', false)">
         <div class="text-[11px] text-mut">Con colegio</div>
         <div class="text-[24px] font-bold tabular-nums leading-tight text-fp-700">{{ fmt(resumen.con_colegio || 0) }}</div>
         <div class="text-[10.5px] text-mut">cubren una mesa concreta</div>
       </div>
-      <div class="rounded-xl px-4 py-3" :class="resumen.sin_colegio ? 'bg-amber-50 border border-amber-200' : 'bg-paper'">
+      <div class="rounded-xl px-4 py-3 cursor-pointer hover:bg-amber-100/60" :class="resumen.sin_colegio ? 'bg-amber-50 border border-amber-200' : 'bg-paper'" @click="irA('sec-esperan')">
         <div class="text-[11px] text-mut">Sin colegio</div>
         <div class="text-[24px] font-bold tabular-nums leading-tight" :class="resumen.sin_colegio ? 'text-amber-700' : ''">
           {{ fmt(resumen.sin_colegio || 0) }}
         </div>
         <div class="text-[10.5px] text-mut">esperan asignación</div>
       </div>
-      <div class="rounded-xl bg-paper px-4 py-3">
+      <div class="rounded-xl bg-paper px-4 py-3 cursor-pointer hover:bg-fp-25" @click="irA('sec-con', true)">
         <div class="text-[11px] text-mut">Reubicados</div>
         <div class="text-[24px] font-bold tabular-nums leading-tight">{{ fmt(resumen.reubicados || 0) }}</div>
         <div class="text-[10.5px] text-mut">trabajan fuera de su colegio</div>
@@ -170,7 +181,7 @@ const cargoTxt = c => cargoLbl[c] || c;
 
     <template v-else>
       <!-- Pendientes de asignar -->
-      <div class="card p-4">
+      <div id="sec-esperan" class="card p-4 scroll-mt-20">
         <div class="flex flex-wrap items-baseline gap-2 mb-3">
           <h3 class="font-serif font-bold text-[16px] mr-auto">Esperan colegio · {{ fmt(pendVista.length) }}</h3>
           <input v-model="q" class="inp !py-1.5 text-[12.5px] max-w-[200px]" placeholder="Buscar…">
@@ -242,20 +253,25 @@ const cargoTxt = c => cargoLbl[c] || c;
       </div>
 
       <!-- Con colegio: mover entre colegios del mismo municipio -->
-      <div v-if="munEfectivo" class="card p-4">
-        <div class="flex flex-wrap items-baseline gap-2 mb-3">
-          <h3 class="font-serif font-bold text-[16px] mr-auto">Con colegio · {{ fmt(asigVista.length) }}</h3>
-          <input v-model="qA" class="inp !py-1.5 text-[12.5px] max-w-[200px]" placeholder="Buscar nombre o colegio…">
+      <div id="sec-con" class="card p-4 scroll-mt-20">
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <h3 class="font-serif font-bold text-[16px] mr-auto">{{ soloReub ? 'Reubicados' : 'Con colegio' }} · {{ fmt(asigVista.length) }}</h3>
+          <label class="flex items-center gap-1.5 text-[12px] cursor-pointer"><input type="checkbox" v-model="soloReub" class="accent-fp-600"> Solo reubicados</label>
+          <input v-model="qA" class="inp !py-1.5 text-[12.5px] max-w-[200px]" placeholder="Buscar…">
         </div>
-        <p class="text-[12px] text-mut mb-3">Para mover a alguien a otro colegio del mismo municipio. Queda constancia en la bitácora.</p>
-        <div v-if="!asigVista.length" class="text-[13px] text-mut py-4 text-center">{{ qA ? 'Sin coincidencias.' : 'Nadie tiene colegio asignado en este territorio todavía.' }}</div>
+        <p class="text-[12px] text-mut mb-3">
+          {{ soloReub ? 'Trabajan en un colegio distinto del que les toca por el padrón.' : 'Para mover a alguien a otro colegio del mismo municipio. Queda constancia en la bitácora.' }}
+          <span v-if="!munEfectivo"> Para mover, entra al municipio con el botón de cada fila.</span>
+        </p>
+        <div v-if="!asigVista.length" class="text-[13px] text-mut py-4 text-center">{{ qA ? 'Sin coincidencias.' : (soloReub ? 'Nadie está reubicado.' : 'Nadie tiene colegio asignado todavía.') }}</div>
         <div v-else class="space-y-2">
           <div v-for="r in asigVista" :key="r.id" class="rounded-xl border border-line p-3 flex flex-wrap items-center gap-3">
             <div class="min-w-0 mr-auto">
-              <div class="font-semibold text-[13.5px]">{{ nombreDe(r) }}</div>
-              <div class="text-[11.5px] text-mut">{{ r.numero_formulario }} · {{ cargoTxt(r.cargo_postulado) }} · en <b>{{ colegioTxt(r.colegio_asignado) }}</b></div>
+              <div class="font-semibold text-[13.5px]">{{ nombreDe(r) }} <span v-if="esReubicado(r)" class="badge border-sky-200 bg-sky-50 text-sky-800 ml-1">reubicado</span></div>
+              <div class="text-[11.5px] text-mut">{{ r.numero_formulario }} · {{ cargoTxt(r.cargo_postulado) }}<span v-if="!munEfectivo"> · {{ territorioDe(r) }}</span> · en <b>{{ colegioAsigTxt(r) }}</b><span v-if="esReubicado(r) && r.codigo_colegio" class="text-mut"> · vota en {{ r.codigo_colegio }}</span></div>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
+            <button v-if="!munEfectivo" class="btn-o btn-s" @click="mun = r.municipio_id">Entrar a {{ territorioDe(r) }} →</button>
+            <div v-else class="flex flex-wrap items-center gap-2">
               <select v-model.number="movEleccion[r.id]" class="inp !py-1.5 text-[12.5px] max-w-[280px]">
                 <option :value="undefined">Mover a…</option>
                 <optgroup v-for="g in porRecinto" :key="g.recinto" :label="g.recinto">

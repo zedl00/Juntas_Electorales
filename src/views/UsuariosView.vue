@@ -432,7 +432,7 @@ const irA = (id) => {
 };
 
 /* ── Configuración de traslados ── */
-const cfgTr = ref({ alcance: 'provincia', requiere_autorizacion: true });
+const cfgTr = ref({ alcance: 'municipio', excede_accion: 'autorizar', encargado_solo_municipio: true, modo_asignacion: 'si_difiere' });
 const cfgBusy = ref(false);
 
 /* ── Seguridad del acceso: captcha de Cloudflare (fase 60) ── */
@@ -477,14 +477,19 @@ const guardarCfgDoc = async (campo, valor) => {
 
 const cargarCfgTr = async () => {
   const { data } = await sb.from('config_traslados').select('*').limit(1).maybeSingle();
-  if (data) cfgTr.value = data;
+  if (data) cfgTr.value = {
+    ...data,
+    excede_accion: data.excede_accion || (data.requiere_autorizacion ? 'autorizar' : 'permitir'),
+    encargado_solo_municipio: data.encargado_solo_municipio !== false
+  };
 };
 
 const guardarCfgTr = async () => {
   cfgBusy.value = true;
   const { data, error } = await sb.rpc('portal_config_traslados_set', {
     p_alcance: cfgTr.value.alcance,
-    p_requiere: cfgTr.value.requiere_autorizacion
+    p_excede: cfgTr.value.excede_accion,
+    p_encargado_solo: cfgTr.value.encargado_solo_municipio
   });
   if (!error) {
     await sb.from('config_traslados').update({ modo_asignacion: cfgTr.value.modo_asignacion }).eq('id', true);
@@ -1070,14 +1075,36 @@ onMounted(() => { cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol()
         </p>
       </div>
 
+      <div class="mt-4 pt-3 border-t border-line">
+        <p class="text-[13.5px] font-semibold mb-1">Cuando un registro excede el alcance</p>
+        <p class="text-[11.5px] text-mut mb-2.5 max-w-[74ch]">Solo la administración de la SNE llega a este punto, porque el encargado no puede registrar fuera de su municipio.</p>
+        <div class="grid gap-2 sm:grid-cols-3">
+          <label v-for="(txt, k) in { permitir: 'Permitir sin trámite', autorizar: 'Requiere autorización de la SNE', bloquear: 'Bloquear el registro' }" :key="k"
+                 class="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-colors"
+                 :class="cfgTr.excede_accion === k ? (k === 'bloquear' ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50') : 'border-line bg-white hover:border-fp-200'">
+            <input type="radio" :value="k" v-model="cfgTr.excede_accion" class="accent-fp-600 w-4 h-4 mt-0.5" @change="guardarCfgTr">
+            <span class="min-w-0">
+              <b class="text-[13px]">{{ txt }}</b>
+              <span class="block text-[11px] text-mut leading-snug mt-0.5">
+                {{ {
+                  permitir:  'Se registra y cuenta de inmediato. Queda constancia del traslado.',
+                  autorizar: 'Se registra como pendiente, no cuenta para ningún colegio, y espera aprobación en Dirigencia → Traslados.',
+                  bloquear:  'No se puede registrar: el sistema avisa que la persona debe registrarse en su mismo territorio.'
+                }[k] }}
+              </span>
+            </span>
+          </label>
+        </div>
+      </div>
+
       <label class="flex items-start gap-2.5 rounded-xl border p-3 mt-3 cursor-pointer transition-colors"
-             :class="cfgTr.requiere_autorizacion ? 'border-amber-300 bg-amber-50' : 'border-line bg-white'">
-        <input type="checkbox" v-model="cfgTr.requiere_autorizacion" class="accent-amber-600 w-4 h-4 mt-0.5" @change="guardarCfgTr">
+             :class="cfgTr.encargado_solo_municipio ? 'border-fp-400 bg-fp-25' : 'border-red-300 bg-red-50'">
+        <input type="checkbox" v-model="cfgTr.encargado_solo_municipio" class="accent-fp-600 w-4 h-4 mt-0.5" @change="guardarCfgTr">
         <span>
-          <b class="text-[13.5px]">Lo que exceda el límite requiere autorización de la SNE</b>
+          <b class="text-[13.5px]">Los encargados electorales solo registran a quien vota en su municipio</b>
           <span class="block text-[11.5px] text-mut leading-snug mt-0.5">
-            Activado: el registro se guarda como pendiente y espera aprobación en la bandeja de traslados.
-            Desactivado: el traslado se permite sin trámite, aunque queda igualmente registrado y es consultable.
+            Activado (recomendado): si la cédula vota en otro municipio, el encargado recibe un aviso y no puede continuar; la base de datos también lo rechaza.
+            Desactivado: al encargado le aplican las mismas reglas de alcance que a la administración.
           </span>
         </span>
       </label>

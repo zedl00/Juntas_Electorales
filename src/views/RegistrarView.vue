@@ -98,7 +98,9 @@ const cedMsg = computed(() => (soloDig(cedR.value).length >= 11 && !cedOk.value)
 
 const puedeP1 = computed(() => (cedOk.value && (manual.value
   ? !!(mf.nombres.trim() && mf.apellido1.trim() && mf.sexo)
-  : !!(lkp.value?.encontrado && !lkp.value.ya_postulado && (!mismatch.value || esOclee.value || (esAdmin.value && admOverride.value))))) && (!pideColegio.value || !!colegioFinal.value));
+  : !!(lkp.value?.encontrado && !lkp.value.ya_postulado && (!mismatch.value || esOclee.value || (esAdmin.value && admOverride.value)))))
+  && (!pideColegio.value || !!colegioFinal.value)
+  && !(mismatch.value && !esOclee.value && trasl.value?.estado === 'bloqueado'));
 const reqCant = computed(() => Object.values(reqR).filter(Boolean).length);
 const reqTotal = computed(() => Object.keys(reqR).length);
 const MIN_REQ = 4;
@@ -298,10 +300,10 @@ const imprimirBlanco = () => printBlanco(munReg.value || 0);
             <!-- Dónde vota frente a dónde trabajará -->
             <div v-if="trasl && trasl.nivel && trasl.nivel !== 'mismo_colegio'"
                  class="mt-3 rounded-xl border p-3"
-                 :class="trasl.estado === 'pendiente' ? 'border-amber-400 bg-amber-50' : 'border-fp-300 bg-fp-25'">
+                 :class="trasl.estado === 'bloqueado' ? 'border-red-300 bg-red-50' : (trasl.estado === 'pendiente' ? 'border-amber-400 bg-amber-50' : 'border-fp-300 bg-fp-25')">
               <div class="text-[10.5px] font-bold uppercase tracking-[0.13em] mb-1.5"
-                   :class="trasl.estado === 'pendiente' ? 'text-amber-800' : 'text-fp-700'">
-                {{ trasl.estado === 'pendiente' ? 'Requiere autorización de la SNE' : 'Trabajará fuera de su colegio' }}
+                   :class="trasl.estado === 'bloqueado' ? 'text-red-700' : (trasl.estado === 'pendiente' ? 'text-amber-800' : 'text-fp-700')">
+                {{ trasl.estado === 'bloqueado' ? 'Fuera del alcance permitido' : (trasl.estado === 'pendiente' ? 'Requiere autorización de la SNE' : 'Trabajará fuera de su colegio') }}
               </div>
               <div class="grid sm:grid-cols-2 gap-2.5 text-[12.5px]">
                 <div class="rounded-lg bg-white/70 px-2.5 py-2">
@@ -316,7 +318,7 @@ const imprimirBlanco = () => printBlanco(munReg.value || 0);
                 </div>
               </div>
               <p class="text-[11.5px] mt-2 leading-snug"
-                 :class="trasl.estado === 'pendiente' ? 'text-amber-900' : 'text-mut'">{{ trasl.msg }}</p>
+                 :class="trasl.estado === 'bloqueado' ? 'text-red-800 font-semibold' : (trasl.estado === 'pendiente' ? 'text-amber-900' : 'text-mut')">{{ trasl.msg }}</p>
             </div>
               <div><span class="text-mut">Recinto:</span> {{ lkp.recinto }}</div>
               <div class="sm:col-span-2"><span class="text-mut">Dirección:</span> {{ lkp.recinto_dir || '—' }}</div>
@@ -338,7 +340,8 @@ const imprimirBlanco = () => printBlanco(munReg.value || 0);
                  · Administración: puede, y aplica el alcance configurado. Fuera del alcance con
                    autorización exigida queda pendiente y no cuenta hasta aprobarse. -->
             <div v-if="mismatch && !esOclee" class="space-y-2">
-              <div v-if="!esAdmin" class="errbx"><b>Vota en otro municipio.</b> Según el padrón vota en <b>{{ lkp.municipio_app || lkp.jce_municipio }}</b>. El encargado electoral solo registra a quien vota en su propio municipio. Si la Comisión necesita registrar a esta persona aquí, debe hacerlo la administración de la SNE.</div>
+              <div v-if="trasl?.estado === 'bloqueado'" class="errbx"><b>No se puede registrar aquí.</b> {{ trasl.msg }} La Comisión configuró que los registros fuera del alcance se bloqueen.</div>
+              <div v-else-if="!esAdmin" class="errbx"><b>Vota en otro municipio.</b> Según el padrón vota en <b>{{ lkp.municipio_app || lkp.jce_municipio }}</b>. El encargado electoral solo registra a quien vota en su propio municipio. Si la Comisión necesita registrar a esta persona aquí, debe hacerlo la administración de la SNE.</div>
               <div v-else class="warn">
                 <b>Advertencia:</b> según el padrón vota en <b>{{ lkp.municipio_app || lkp.jce_municipio }}</b>, no en el territorio seleccionado.
                 <span v-if="trasl?.estado === 'pendiente'" class="block mt-1 text-[12px]">Excede el alcance permitido: quedará <b>pendiente de autorización de la SNE</b> y no contará para ningún colegio hasta que se apruebe.</span>

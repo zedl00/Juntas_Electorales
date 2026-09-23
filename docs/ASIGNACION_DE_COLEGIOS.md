@@ -106,3 +106,11 @@ Las juntas electorales, los encargados y el registro son por municipio. Por eso 
 - Las mejoras de Asignación no cambian.
 
 Casos 3 y 4 de la matriz pasan a: solo la administración. Caso 5: solo la administración, y queda pendiente hasta aprobarse.
+
+## 10. Ajustes del 23 de septiembre de 2026 (fase 67)
+
+- **Qué pasa cuando un registro excede el alcance** pasa a tener tres opciones en Gestión → Usuarios → Traslados: permitir sin trámite, requerir autorización de la SNE, o **bloquear** con el mensaje «Está registrando fuera de su municipio/provincia. La persona debe registrarse en su mismo territorio». El bloqueo se aplica en la pantalla y en la base.
+- **El límite del encargado** (solo registra a quien vota en su municipio) es ahora un parámetro visible, activado por defecto.
+- **Quién asigna y mueve colegio:** la administración de la SNE en todo el país; en su municipio, el encargado electoral o quien tenga permiso de registrar. Antes cualquier usuario con sesión podía hacerlo.
+- **Pantalla Asignación:** las cuatro tarjetas llevan a su lista. «Con colegio» y «Reubicados» se ven también en la vista nacional, con un botón para entrar al municipio y mover. Los reubicados son quienes trabajan en un colegio distinto del que les toca por el padrón.
+- **Colegio dentro del mismo municipio:** con «Preguntar en cada registro» el selector aparece también para quien vota en el municipio, con su propio colegio preseleccionado.
