@@ -4,6 +4,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
+0. **Aplicar fase 78** (cuentas de administración pueden entrar por contraseña en Análisis Electoral). Esperado: 1 fila ok = true. Luego probar la entrada a la otra aplicación.
 0a. **Volver a desplegar la función «acceso»** (una consulta menos al entrar) y subir `dist` (perfil y permisos en paralelo; ayuda de bandejas).
 0b. **Subir `dist` al subdominio YA**: con el gancho activo, el código publicado (viejo) no puede iniciar sesión.
 0d. **Probar con un usuario de prueba**: 5 PIN malos → bloqueo 15 min y aparece en «Usuarios bloqueados»; habilitar; entrar bien → modal de identidad → PIN personal → aviso amarillo de confirmación pendiente → confirmar en «Primeros ingresos por confirmar».
