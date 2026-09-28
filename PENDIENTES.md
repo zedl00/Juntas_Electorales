@@ -4,8 +4,6 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-0. **Confirmar a Manuel (01200549093)** en Gestión → Accesos y seguridad → «Primeros ingresos por confirmar»; el aviso amarillo debe desaparecer al recargar y «puede registrar» quedar activo. Probar «¿Olvidaste tu PIN?» con él: solicitud → bandeja → «Restablecer y enviar» → entrar → vuelve a pedir fecha (fase 79).
-0a. **Probar la entrada a Análisis Electoral** con la cuenta de administración (fase 78 aplicada).
 0b. **Volver a desplegar la función «acceso»** (una consulta menos al entrar) y **subir `dist` (8.8.0) al subdominio YA**: con el gancho activo, el código publicado (viejo) no puede iniciar sesión salvo la administración.
 0. **Aplicar fase 73** (quien vota en el exterior solo se registra desde una OCLEE). Esperado: 1 fila ok = true.
 1. **Limpieza de las pruebas**: borrar a Francisca (01200938577) y a 07100236442 con la consulta de limpieza, y dejar la configuración en: alcance municipio · «Requiere autorización» · encargado solo municipio · «Preguntar solo si vota fuera».
@@ -42,6 +40,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Prueba de Manuel cerrada: «¿Olvidaste tu PIN?» → bandeja → restablecer → vuelve a pedir la fecha (fase 79). Confirmación de la SNE del 23 sep se conserva, como está diseñado. Análisis Electoral entra con la cuenta de administración (fase 78) (27 sep 2026).
 
 - Fases 78, 79 y 80 aplicadas. Manuel entró con PIN nuevo, verificó identidad y creó su PIN personal (27 sep 2026).
 
