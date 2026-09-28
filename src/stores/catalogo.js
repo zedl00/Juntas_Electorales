@@ -14,6 +14,7 @@ export const catScope = computed(() => {
   if (p.rol === 'admin_sne') return cat.value;
   if (p.rol === 'coordinador_regional') return cat.value.filter(m => m.macroregion === p.region);
   if (p.rol === 'supervisor_provincial') return cat.value.filter(m => m.provincia_id === p.provincia_id);
+  if (!p.municipio_id && p.provincia_id) return cat.value.filter(m => m.provincia_id === p.provincia_id); // nivel provincial sin municipio
   return cat.value.filter(m => m.municipio_id === p.municipio_id);
 });
 

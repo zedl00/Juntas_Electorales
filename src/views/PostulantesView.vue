@@ -47,6 +47,8 @@ const router = useRouter();
 /* ── Listado ── */
 const rows = ref([]), pTotal = ref(0), pBusy = ref(false), csvBusy = ref(false);
 const page = ref(0), pageSize = ref(50);
+/* Columna Territorio: alcance amplio, o usuario de nivel provincial sin municipio (fase 81) */
+const verTerritorio = computed(() => scopeAmplio.value || !perfil.value?.municipio_id);
 const pSort = reactive({ c: 'created_at', asc: false });
 const f = reactive({ q: '', estado: '', cargo: '', sexo: '', exp: '', region: '', prov: '', mun: 0, firme: '' });
 
@@ -286,7 +288,7 @@ onActivated(() => { if (!route.query.mun) cargarPost(); });
               <th class="th cursor-pointer" @click="sortP('sexo')">Sexo {{ pArrow('sexo') }}</th>
               <th class="th cursor-pointer" @click="sortP('cargo_postulado')">Cargo {{ pArrow('cargo_postulado') }}</th>
               <th class="th cursor-pointer" @click="sortP('id_colegio_padron')">Colegio {{ pArrow('id_colegio_padron') }}</th>
-              <th v-if="scopeAmplio" class="th cursor-pointer" @click="sortP('municipio_id')">Territorio {{ pArrow('municipio_id') }}</th>
+              <th v-if="verTerritorio" class="th cursor-pointer" @click="sortP('municipio_id')">Territorio {{ pArrow('municipio_id') }}</th>
               <th class="th cursor-pointer" @click="sortP('estado')">Etapa {{ pArrow('estado') }}</th>
               <th class="th cursor-pointer" @click="sortP('created_at')">Fecha {{ pArrow('created_at') }}</th>
             </tr>
@@ -299,7 +301,7 @@ onActivated(() => { if (!route.query.mun) cargarPost(); });
               <td class="td">{{ r.sexo }}</td>
               <td class="td whitespace-nowrap">{{ cargoCorto[r.cargo_postulado] }}</td>
               <td class="td whitespace-nowrap"><span class="tabular-nums">{{ r.codigo_colegio || r.id_colegio_padron || '—' }}</span><span class="block text-[10px] text-mut max-w-[140px] truncate">{{ r.recinto_nombre }}</span></td>
-              <td v-if="scopeAmplio" class="td text-mut whitespace-nowrap">{{ nombreMun(r.municipio_id) }}</td>
+              <td v-if="verTerritorio" class="td text-mut whitespace-nowrap">{{ nombreMun(r.municipio_id) }}</td>
               <td class="td"><span class="badge" :class="estadoCls[r.estado]">{{ estadoLbl[r.estado] }}</span></td>
               <td class="td text-mut whitespace-nowrap text-[12px]">{{ fecha(r.created_at) }}</td>
             </tr>

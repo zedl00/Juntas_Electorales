@@ -4,10 +4,9 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-0b. **Volver a desplegar la función «acceso»** (una consulta menos al entrar) y **subir `dist` (8.8.0) al subdominio YA**: con el gancho activo, el código publicado (viejo) no puede iniciar sesión salvo la administración.
-0. **Aplicar fase 73** (quien vota en el exterior solo se registra desde una OCLEE). Esperado: 1 fila ok = true.
-1. **Limpieza de las pruebas**: borrar a Francisca (01200938577) y a 07100236442 con la consulta de limpieza, y dejar la configuración en: alcance municipio · «Requiere autorización» · encargado solo municipio · «Preguntar solo si vota fuera».
-2. **Subir `dist` al subdominio** (cambiaron Registrar, Asignación, Gestión, Dirigencia, Ayuda, menú e impresión) y comprobar en `juntas.strategosfp.com` que la versión y las pantallas coinciden con localhost.
+0. **Aplicar fase 81** (encargado provincial sin municipio lee los expedientes y formularios de su provincia, igual que ya muestran sus tableros). Esperado: 1 fila con politicas = 2 y con_provincia = true. Luego, con Manuel, abrir Postulantes: deben verse los 5 de San Juan con columna Territorio.
+0a. **Confirmar la limpieza**: la consulta de borrado de 01200938577 y 07100236442 debe haber dado «2 rows affected» (o menos si ya no existían).
+0b. **Subir `dist` otra vez** (Postulantes con columna Territorio para nivel provincial); el paquete es `portal-delegados-dist.zip`.
 3. **Crear un usuario encargado de prueba** en Gestión → Usuarios y verificar el bloqueo: al buscar una cédula de otro municipio debe ver «Vota en otro municipio» sin poder continuar.
 4. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
 
@@ -40,6 +39,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Función «acceso» redesplegada, `dist` 8.8.0 en producción, fase 73 aplicada, configuración de traslados repuesta. Fase 81 escrita: lectura por provincia para nivel provincial sin municipio (27 sep 2026).
 
 - Prueba de Manuel cerrada: «¿Olvidaste tu PIN?» → bandeja → restablecer → vuelve a pedir la fecha (fase 79). Confirmación de la SNE del 23 sep se conserva, como está diseñado. Análisis Electoral entra con la cuenta de administración (fase 78) (27 sep 2026).
 
