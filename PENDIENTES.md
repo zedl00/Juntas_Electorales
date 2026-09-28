@@ -4,6 +4,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
+0. **Aplicar fase 79** (volver a verificar identidad al restablecer el PIN, parámetro en Seguridad del acceso). Esperado: 1 fila con parametro = true y disparador = true. Prueba: restablecer el PIN de un usuario ya verificado → al entrar con el PIN nuevo debe pedir la fecha de nacimiento otra vez; en Actividad aparece «Verificación de identidad reiniciada».
 0. **Aplicar fase 78** (cuentas de administración pueden entrar por contraseña en Análisis Electoral). Esperado: 1 fila ok = true. Luego probar la entrada a la otra aplicación.
 0a. **Volver a desplegar la función «acceso»** (una consulta menos al entrar) y subir `dist` (perfil y permisos en paralelo; ayuda de bandejas).
 0b. **Subir `dist` al subdominio YA**: con el gancho activo, el código publicado (viejo) no puede iniciar sesión.
@@ -23,6 +24,7 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Pendiente
 
+- **Encargados provinciales que registran** (decisión 27 sep: NO por ahora). Hallazgo: un encargado con provincia y sin municipio, aunque tenga «puede registrar», solo ve «Su propio colegio» y la base rechaza el registro (la política exige municipio). Propuesta guardada: selector de municipio limitado a su provincia, política de inserción que acepte municipio dentro de su provincia, y aviso en Editar usuario. Mientras tanto: no dar «puede registrar» a usuarios sin municipio.
 - **Lista de usuarios más compacta** (pedido 23 sep): instructivo y estado como iconos con tooltip (fecha o «pendiente» al pasar el ratón); acciones editar, PIN nuevo, reenviar y copiar como iconos con tooltip; filas más cortas.
 - **Poner la API detrás del dominio propio** (pedido 23 sep): un Worker de Cloudflare en `api.juntas.strategosfp.com` que reenvíe a Supabase, para que el WAF y los límites de Cloudflare protejan también la API y el proyecto no quede a la vista. Va como Cloudflare Parte 3, después de que la zona esté activa. Un API Gateway autogestionado (Kong, Tyk, APISIX) haría lo mismo pero exige un servidor propio y mantenimiento; no conviene con el equipo actual.
 
@@ -42,6 +44,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Fase 79 escrita: al restablecer un PIN (Gestión o asistente) se borra la verificación de identidad si el parámetro está activo; interruptor en Configuración, ayuda y documento actualizados. Fase 78 escrita para Análisis Electoral (27 sep 2026).
 
 - Fechas solo-día corregidas (se mostraban un día antes). Modal de identidad con día · mes · año en campos separados (23 sep 2026).
 

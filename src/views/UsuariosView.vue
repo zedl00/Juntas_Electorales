@@ -551,7 +551,7 @@ const cfgTr = ref({ alcance: 'municipio', excede_accion: 'autorizar', encargado_
 const cfgBusy = ref(false);
 
 /* ── Seguridad del acceso: captcha de Cloudflare (fase 60) ── */
-const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, identidad_campos: 'fecha', pin_caduca_horas: 72, confirmar_sne: true });
+const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, identidad_campos: 'fecha', pin_caduca_horas: 72, confirmar_sne: true, reverificar_al_reset: true });
 const segBusy = ref(false);
 const cargarCfgSeg = async () => {
   const { data } = await sb.from('config_seguridad').select('*').limit(1).maybeSingle();
@@ -564,7 +564,7 @@ const guardarCfgSeg = async () => {
     captcha_activo: !!c.captcha_activo, captcha_site_key: c.captcha_site_key || '',
     bloqueo_activo: !!c.bloqueo_activo, intentos_aviso: +c.intentos_aviso || 3, intentos_bloqueo: +c.intentos_bloqueo || 5,
     bloqueo_minutos: +c.bloqueo_minutos || 15, verificar_padron: !!c.verificar_padron, identidad_campos: c.identidad_campos || 'fecha',
-    pin_caduca_horas: +c.pin_caduca_horas || 72, confirmar_sne: !!c.confirmar_sne
+    pin_caduca_horas: +c.pin_caduca_horas || 72, confirmar_sne: !!c.confirmar_sne, reverificar_al_reset: !!c.reverificar_al_reset
   } });
   segBusy.value = false;
   if (error) { t('No se pudo guardar: ' + error.message, 'err'); cargarCfgSeg(); return; }
@@ -1270,6 +1270,10 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
               <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="fecha" v-model="cfgSeg.identidad_campos" class="accent-fp-600"> Solo fecha de nacimiento <span class="text-mut">· ágil, recomendado</span></label>
               <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="fecha_municipio" v-model="cfgSeg.identidad_campos" class="accent-fp-600"> Fecha de nacimiento y municipio donde vota</label>
             </span>
+            <label class="flex items-start gap-1.5 mt-2 text-[12px] cursor-pointer" @click.stop>
+              <input type="checkbox" v-model="cfgSeg.reverificar_al_reset" class="accent-fp-600 w-3.5 h-3.5 mt-0.5">
+              <span>Volver a pedirla cada vez que se restablece el PIN <span class="text-mut">· si un PIN nuevo llega a un teléfono equivocado, quien lo reciba no pasa. La confirmación de la SNE no se repite.</span></span>
+            </label>
           </span>
         </label>
 

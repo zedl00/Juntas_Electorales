@@ -21,6 +21,8 @@ Los tres números (aviso, bloqueo y minutos) son configurables. Un usuario bloqu
 
 En el primer ingreso, antes de crear el PIN personal, la persona escribe su **fecha de nacimiento** y, si la Comisión lo configuró («Fecha de nacimiento y municipio»), el **municipio donde vota**. Por defecto se pide solo la fecha, que es lo más ágil. Se contrastan con el padrón de la Junta. La administración de la SNE nunca pasa por esta verificación (fase 76). Tres fallos: bloqueo definitivo y aviso en «Usuarios bloqueados». Si la cédula no está en el padrón cargado, se deja pasar y queda marcada para la confirmación de la SNE. Quien reciba un PIN por error no conoce esos datos.
 
+Con «Volver a pedirla cada vez que se restablece el PIN» (activado por defecto, fase 79), todo restablecimiento desde Gestión o desde el asistente borra la verificación anterior: la persona la repite en el siguiente ingreso y hasta entonces consulta pero no registra. La confirmación de la SNE no se repite, porque el restablecimiento lo hizo la propia SNE. Cada reinicio queda en Actividad como «identidad_reiniciada».
+
 ## Capa C · PIN inicial de un solo uso con caducidad
 
 Todo PIN inicial nace con fecha de vencimiento (72 horas por defecto). Si se intenta usar vencido, el acceso pide uno nuevo. Regenerar un PIN reinicia el plazo. Un PIN viejo filtrado no sirve.
