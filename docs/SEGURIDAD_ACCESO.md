@@ -25,7 +25,7 @@ Con «Volver a pedirla cada vez que se restablece el PIN» (activado por defecto
 
 ## Capa C · PIN inicial de un solo uso con caducidad
 
-Todo PIN inicial nace con fecha de vencimiento (72 horas por defecto). Si se intenta usar vencido, el acceso pide uno nuevo. Regenerar un PIN reinicia el plazo. Un PIN viejo filtrado no sirve.
+Todo PIN inicial nace con fecha de vencimiento (72 horas por defecto). Si se intenta usar vencido, el acceso pide uno nuevo. Regenerar un PIN, desde Gestión o desde el asistente, reinicia el plazo y devuelve la fila a «Accesos por enviar» (fase 80). Un PIN viejo filtrado no sirve.
 
 ## Capa D · Confirmación de la SNE
 

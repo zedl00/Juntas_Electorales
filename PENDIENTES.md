@@ -4,6 +4,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
+0. **Aplicar fase 80** (restablecer PIN renueva el plazo del PIN inicial; corrige «Tu PIN inicial venció» tras «↺ PIN nuevo»). Esperado: 1 fila con portal = true y bot = true. Después, volver a dar «↺ PIN nuevo» a Manuel (01200549093) y entrar con ese PIN.
 0. **Aplicar fase 79** (volver a verificar identidad al restablecer el PIN, parámetro en Seguridad del acceso). Esperado: 1 fila con parametro = true y disparador = true. Prueba: restablecer el PIN de un usuario ya verificado → al entrar con el PIN nuevo debe pedir la fecha de nacimiento otra vez; en Actividad aparece «Verificación de identidad reiniciada».
 0. **Aplicar fase 78** (cuentas de administración pueden entrar por contraseña en Análisis Electoral). Esperado: 1 fila ok = true. Luego probar la entrada a la otra aplicación.
 0a. **Volver a desplegar la función «acceso»** (una consulta menos al entrar) y subir `dist` (perfil y permisos en paralelo; ayuda de bandejas).
@@ -44,6 +45,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Fase 80 escrita: «↺ PIN nuevo» y el restablecimiento por asistente escriben el PIN en usuarios_pin_inicial, con plazo nuevo y de vuelta en «Accesos por enviar» (27 sep 2026).
 
 - Fase 79 escrita: al restablecer un PIN (Gestión o asistente) se borra la verificación de identidad si el parámetro está activo; interruptor en Configuración, ayuda y documento actualizados. Fase 78 escrita para Análisis Electoral (27 sep 2026).
 
