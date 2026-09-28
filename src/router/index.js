@@ -1,6 +1,6 @@
 /* src/router/index.js */
 import { createRouter, createWebHashHistory } from 'vue-router';
-import { authReady, sesion, esAdmin, perfil } from '../stores/auth';
+import { authReady, sesion, esAdmin, perfil, vePostulantes } from '../stores/auth';
 
 /* Rutas con hash (#/inicio): funcionan en cPanel sin configurar el servidor. */
 const routes = [
@@ -8,12 +8,13 @@ const routes = [
   { path: '/acceso',      name: 'acceso',      component: () => import('../views/AccesoView.vue'),      meta: { publica: true } },
   { path: '/inicio',      name: 'inicio',      component: () => import('../views/InicioView.vue') },
   { path: '/registrar',   name: 'registrar',   component: () => import('../views/RegistrarView.vue') },
-  { path: '/postulantes', name: 'postulantes', component: () => import('../views/PostulantesView.vue') },
+  { path: '/avance',      name: 'avance',      component: () => import('../views/AvanceView.vue') },
+  { path: '/postulantes', name: 'postulantes', component: () => import('../views/PostulantesView.vue'), meta: { verPost: true } },
   { path: '/protocolo',   name: 'protocolo',   component: () => import('../views/ProtocoloView.vue') },
   { path: '/usuarios',    name: 'usuarios',    component: () => import('../views/UsuariosView.vue'),    meta: { admin: true } },
   { path: '/dirigencia',  name: 'dirigencia',  component: () => import('../views/DirigenciaView.vue'),  meta: { admin: true } },
   { path: '/idoneidad',   name: 'idoneidad',   component: () => import('../views/IdoneidadView.vue') },
-  { path: '/asignacion',  name: 'asignacion',  component: () => import('../views/AsignacionView.vue'), meta: { roles: ['admin_sne','coordinador_regional'] } },
+  { path: '/asignacion',  name: 'asignacion',  component: () => import('../views/AsignacionView.vue'), meta: { roles: ['admin_sne','coordinador_regional'], verPost: true } },
   { path: '/actividad',   name: 'actividad',   component: () => import('../views/ActividadView.vue'),   meta: { admin: true } },
   { path: '/cuenta',      name: 'cuenta',      component: () => import('../views/CuentaView.vue') },
   { path: '/ayuda',       name: 'ayuda',       component: () => import('../views/AyudaView.vue'),       meta: { publica: true } },
@@ -28,6 +29,7 @@ router.beforeEach(async to => {
   if (to.name === 'acceso' && sesion.value) return { name: 'inicio' };
   if (to.meta.admin && !esAdmin.value) return { name: 'inicio' };
   if (to.meta.roles && !to.meta.roles.includes(perfil.value?.rol)) return { name: 'inicio' };
+  if (to.meta.verPost && !vePostulantes.value) return { name: 'inicio' };
   return true;
 });
 

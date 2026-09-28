@@ -4,9 +4,9 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-0. **Aplicar fase 81** (encargado provincial sin municipio lee los expedientes y formularios de su provincia, igual que ya muestran sus tableros). Esperado: 1 fila con politicas = 2 y con_provincia = true. Luego, con Manuel, abrir Postulantes: deben verse los 5 de San Juan con columna Territorio.
-0a. **Confirmar la limpieza**: la consulta de borrado de 01200938577 y 07100236442 debe haber dado «2 rows affected» (o menos si ya no existían).
-0b. **Subir `dist` otra vez** (Postulantes con columna Territorio para nivel provincial); el paquete es `portal-delegados-dist.zip`.
+0. **Aplicar fase 82** (parámetro «Ver postulantes» por usuario, lectura restringida, funciones de avance con alcance real, Asignación exige el parámetro). Esperado: 1 fila con columna = true, politicas = 2 y funciones = 3.
+0a. **Subir `dist` 8.9.0** (pantalla Avance, menú y pestañas móviles, casilla en Usuarios). Paquete: `portal-delegados-dist.zip`.
+0b. **Probar**: (1) Manuel sin la casilla → no ve Postulantes ni en menú ni por dirección directa; en Avance ve San Juan por municipios y baja a distritos y colegios; registra y el registro le devuelve el número de formulario. (2) Marcarle «Puede ver postulantes» → vuelve a ver la lista. (3) Con el administrador todo igual que antes.
 3. **Crear un usuario encargado de prueba** en Gestión → Usuarios y verificar el bloqueo: al buscar una cédula de otro municipio debe ver «Vota en otro municipio» sin poder continuar.
 4. **Cloudflare, Parte 2**: crear cuenta, importar DNS, cambiar nameservers en GoDaddy. Avisar «activo».
 
@@ -39,6 +39,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Fase 81 aplicada; Manuel ve los expedientes de su provincia. Fase 82 escrita: parámetro «Ver postulantes» (en falso para todos salvo administración), lectura de lo propio siempre, pantalla Avance para todos los roles con niveles región › provincia › municipio › distrito › colegios, Asignación solo con el parámetro (28 sep 2026).
 
 - Función «acceso» redesplegada, `dist` 8.8.0 en producción, fase 73 aplicada, configuración de traslados repuesta. Fase 81 escrita: lectura por provincia para nivel provincial sin municipio (27 sep 2026).
 

@@ -115,6 +115,15 @@ import { reqLbl } from '../lib/constantes';
       </details>
 
       <details class="card acc">
+        <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Avance: seguimiento por territorio</summary>
+        <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
+          <p><b>Qué es.</b> La pantalla de seguimiento con cifras, sin nombres de personas. Cada quien entra en su nivel: la SNE ve regiones, un coordinador sus provincias, la dirigencia provincial sus municipios y un encargado municipal sus distritos y colegios.</p>
+          <p><b>Cómo se lee.</b> En cada fila: colegios, meta (3 por colegio), registrados y porcentaje, <b>colegios ✓</b> (con 3 o más personas), <b>incompletos</b> (parciales con 1 o 2, más vacíos sin nadie) y <b>faltan</b> (personas que hacen falta para completar la meta). Las filas se ordenan de menor a mayor avance para ver primero dónde empujar; también por más faltantes o por nombre, y con «Solo incompletos».</p>
+          <p><b>Bajar de nivel.</b> Toca una fila para entrar: región › provincia › municipio › distrito › colegios. En el último nivel se ve cada colegio con cuántas personas tiene y cuántas le faltan. La ruta de arriba permite volver.</p>
+        </div>
+      </details>
+
+      <details class="card acc">
         <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Asignación de colegios</summary>
         <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
           <p>La pantalla <b>Asignación</b> es la herramienta de ajuste; en el registro diario casi no hace falta. Sirve para: dar colegio a quien quedó sin él (registros anteriores o traslados aprobados después), <b>mover</b> a alguien a otro colegio del mismo municipio cuando uno se llena y otro está vacío, ver quién está <b>reubicado</b> (trabaja en un colegio distinto del que le toca por el padrón), y ver los <b>colegios con faltantes</b>.</p>
@@ -158,6 +167,7 @@ import { reqLbl } from '../lib/constantes';
           <p><b>Autorización de la SNE.</b> Cuando un registro queda pendiente, la persona tiene colegio solicitado pero <b>no cuenta</b> para la cobertura. La administración lo aprueba o rechaza en <b>Dirigencia → Traslados</b>. Al aprobar, el colegio pasa a asignado y la persona empieza a contar. Si se rechaza, queda sin colegio en ese territorio.</p>
           <p><b>Seguridad del acceso.</b> Cuatro capas, cada una con su interruptor: captcha anti-robots en la entrada; <b>bloqueo por intentos fallidos</b> (aviso, bloqueo temporal, y definitivo si se repite, con lista de bloqueados para habilitar); <b>verificación de identidad con el padrón</b> en el primer acceso (fecha de nacimiento, y municipio si se configura; tres intentos), que puede volver a pedirse cada vez que se restablece un PIN; <b>PIN inicial con caducidad</b>; y <b>confirmación de la SNE</b> tras el primer ingreso, sin la cual la persona consulta pero no registra.</p>
           <p><b>Si alguien olvidó su PIN.</b> En la pantalla de acceso, «¿Olvidaste tu PIN?». La solicitud llega a Gestión → Usuarios, la administración genera un PIN nuevo y lo envía por WhatsApp desde «Accesos por enviar».</p>
+          <p><b>Quién ve nombres.</b> Nadie ve listados de personas salvo la administración o quien tenga marcada la casilla <b>«Puede ver postulantes»</b> en su usuario (Gestión → Usuarios → Editar). Sin ella, la persona ve solo cifras en <b>Avance</b> y lo que ella misma registró; Postulantes y Asignación no aparecen en su menú. Es una decisión consciente por usuario, de cualquier rol.</p>
           <p><b>Marca de agua y permisos por rol.</b> Qué documentos llevan marca de agua al imprimirse, y qué ve y qué imprime cada rol.</p>
           <p class="text-[12px] text-mut">Todo cambio de configuración queda registrado en Actividad con el nombre de quien lo hizo.</p>
         </div>

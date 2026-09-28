@@ -115,6 +115,7 @@ const abrirEdicion = async u => {
     puedeImp: u.puede_imprimir,
     forzar: !!u.primer_acceso,
     puedeReg: u.puede_registrar,
+    verPost: u.ver_postulantes === true,
     activo: !!u.activo
   };
   edDists.value = []; edCircs.value = [];
@@ -172,6 +173,7 @@ const guardarEdicion = async () => {
     puede_imprimir: e.puedeImp === false ? false : null,
     primer_acceso: !!e.forzar,
     puede_registrar: e.puedeReg === true ? true : false,
+    ver_postulantes: e.verPost === true,
     activo: e.activo
   }).eq('id', e.id);
   edBusy.value = false;
@@ -449,7 +451,7 @@ const resetPin = async u => {
 };
 
 const abrirCrear = () => {
-  cu.value = { ced: '', lkpU: null, nombre: '', telefono: '', rol: 'enc_electoral', mun: 0, jce: 0, prov: 0, region: '', verD: true, puedeReg: null, pin: genPin() };
+  cu.value = { ced: '', lkpU: null, nombre: '', telefono: '', rol: 'enc_electoral', mun: 0, jce: 0, prov: 0, region: '', verD: true, puedeReg: null, verPost: false, pin: genPin() };
   distsU.value = [];
   cuErr.value = ''; cuPend.value = null; cuOk.value = null; showCrear.value = true;
 };
@@ -503,6 +505,7 @@ const crearUsuario = async () => {
     municipio_id: terrRol ? cu.value.mun : null,
     ver_distritos: cu.value.verD !== false,
     puede_registrar: cu.value.puedeReg,
+    ver_postulantes: cu.value.verPost === true,
     jce_id: ['presidente','secretario_general','enc_electoral'].includes(cu.value.rol) && cu.value.jce ? cu.value.jce : null,
     provincia_id: cu.value.rol === 'supervisor_provincial' ? cu.value.prov : (terrRol ? (m?.provincia_id || null) : null),
     region: cu.value.rol === 'coordinador_regional' ? cu.value.region : (terrRol ? (m?.macroregion || null) : null),
@@ -848,6 +851,12 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
               <input type="checkbox" :checked="ed.puedeImp !== false" @change="ed.puedeImp = $event.target.checked ? null : false" class="accent-fp-600 w-4 h-4">
               <span class="text-[12.5px]">Autorizar a <b>imprimir</b> listados y reportes</span>
             </label>
+            <label v-if="ed.rol !== 'admin_sne'" class="flex items-start gap-2 cursor-pointer rounded-lg border p-2.5 transition-colors" :class="ed.verPost ? 'border-amber-300 bg-amber-50' : 'border-line bg-white'">
+              <input type="checkbox" v-model="ed.verPost" class="accent-amber-600 mt-0.5 w-4 h-4">
+              <span class="text-[12.5px] leading-snug">Puede <b>ver postulantes</b>: listados con nombres de su alcance
+                <span class="block text-[11px] text-mut mt-0.5">Sin esta casilla ve solo cifras (Avance) y lo que él mismo registró. La administración siempre ve todo.</span>
+              </span>
+            </label>
             <label class="flex items-start gap-2 cursor-pointer rounded-lg border p-2.5 transition-colors"
                    :class="regEfectivo(ed) ? 'border-fp-300 bg-fp-25' : 'border-line bg-white'">
               <input type="checkbox" :checked="regEfectivo(ed)"
@@ -930,6 +939,12 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" :checked="cu.puedeImp !== false" @change="cu.puedeImp = $event.target.checked ? null : false" class="accent-fp-600 w-4 h-4">
                 <span class="text-[12.5px]">Autorizar a <b>imprimir</b> listados y reportes</span>
+              </label>
+              <label v-if="cu.rol !== 'admin_sne'" class="flex items-start gap-2 cursor-pointer rounded-lg border p-2.5 transition-colors" :class="cu.verPost ? 'border-amber-300 bg-amber-50' : 'border-line bg-white'">
+                <input type="checkbox" v-model="cu.verPost" class="accent-amber-600 mt-0.5 w-4 h-4">
+                <span class="text-[12.5px] leading-snug">Puede <b>ver postulantes</b>: listados con nombres de su alcance
+                  <span class="block text-[11px] text-mut mt-0.5">Deja esta casilla <b>sin marcar</b> salvo instrucción expresa de la Comisión. Sin ella la persona ve solo cifras (Avance) y lo que ella misma registró.</span>
+                </span>
               </label>
               <label v-if="!['enc_electoral','admin_sne'].includes(cu.rol)"
                      class="flex items-start gap-2 cursor-pointer rounded-lg border p-2.5 transition-colors"

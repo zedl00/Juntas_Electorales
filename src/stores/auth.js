@@ -17,6 +17,8 @@ export const esNacional = computed(() => ['admin_sne','consulta_nacional'].inclu
 export const canRegister = computed(() => perfil.value?.puede_registrar === true
   || (perfil.value?.puede_registrar == null && ['enc_electoral','admin_sne'].includes(perfil.value?.rol)));
 export const verDistritos = computed(() => perfil.value?.ver_distritos !== false);
+/* Listados de personas: solo la administración o quien tenga el parámetro «Ver postulantes» (fase 82) */
+export const vePostulantes = computed(() => perfil.value?.rol === 'admin_sne' || perfil.value?.ver_postulantes === true);
 
 /* Permisos del rol: qué datos se ven y qué documentos se imprimen */
 export const permisos = ref({
