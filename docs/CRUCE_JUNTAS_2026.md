@@ -65,3 +65,23 @@ Marca como seleccionado y pone el cargo electo a los aspirantes emparejados. No 
 ```sql
 with u as (update public.aspirantes a set seleccionado = true, cargo_electo = j.cargo, fecha_seleccion = coalesce(a.fecha_seleccion, now()), updated_at = now() from public.jce_juntas_2026 j where j.aspirante_id = a.id and (not coalesce(a.seleccionado, false) or a.cargo_electo is distinct from j.cargo) returning a.id) select count(*) as actualizados from u;
 ```
+
+## Después del cruce (30 sep 2026)
+
+- `fase83b` registra lo ejecutado a mano: 11 juntas mapeadas, dos pasadas tolerantes y 16 emparejamientos revisados uno a uno.
+- `fase84` guarda la cédula de la resolución en `aspirantes.cedula` (1,409 personas) y crea la vista `public.vista_juntas_2026`.
+
+Consultas sobre la vista, una sentencia cada una:
+
+Una junta completa:
+```sql
+select junta, cargo, persona, partido, emparejamiento, cedula from public.vista_juntas_2026 where municipio_jce = 'AZUA' order by orden;
+```
+Resumen por partido:
+```sql
+select coalesce(partido, '(no está en la base)') as partido, count(*) as cargos, count(*) filter (where titular) as titulares, count(*) filter (where cargo = 'Presidente') as presidentes, count(distinct junta) as juntas from public.vista_juntas_2026 group by 1 order by 2 desc;
+```
+Fuerza del Pueblo por junta:
+```sql
+select junta, municipio, count(*) as cargos_fp, count(*) filter (where titular) as titulares_fp, bool_or(cargo = 'Presidente') as presidente_fp from public.vista_juntas_2026 where partido = 'FP' group by 1, 2 order by 3 desc, 1;
+```

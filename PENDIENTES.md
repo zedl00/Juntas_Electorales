@@ -4,7 +4,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-0. **Cruce Resolución JCE 08-2026 (juntas electorales)**: aplicar fase 83 (carga 1,476 cargos y empareja); esperado cargos = 1476, juntas = 162 y juntas_con_municipio = 162. Luego correr R1 a R7 de docs/CRUCE_JUNTAS_2026.md y pegar R1, R2 y el conteo de R5. Decidir después si se aplica R8 (marcar seleccionados en Análisis Electoral).
+0. **Cruce Resolución JCE 08-2026**: fase 83 aplicada y cruce hecho (1,409 de 1,476 emparejados; 67 no están en la base). Falta: aplicar fase 84 (cédula en aspirantes + vista), decidir el paso 4 (desmarcar a los ~90 marcados en mayo que la Junta sustituyó) y clasificar los 181 electos con partido «Desconocido».
 0a. **Registro de encargados provinciales**: decidir A (registra eligiendo municipio de su provincia, fase 84) o B (no registra; ocultar Registrar y bloquear la casilla). Hoy el botón Registrar no hace nada para Manuel.
 0. **Cerrar la prueba de la fase 82 con Manuel**: (a) registrar una persona de prueba y confirmar que aparece el número de formulario; (b) marcarle «Puede ver postulantes» en Editar usuario, recargar su sesión y confirmar que Postulantes vuelve; luego desmarcar.
 0a. **Confirmar la limpieza** de 01200938577 y 07100236442 («2 rows affected» o menos si ya no existían).
