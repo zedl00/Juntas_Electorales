@@ -4,7 +4,8 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-0. **Análisis Electoral · pantallas sobre el cruce** (pedido 30 sep): (1) control de cada junta: presidencia y mayoría de titulares por partido, con filtros; (2) reporte para impugnaciones (plazo ~14 oct): juntas sin titular FP y cargos en manos de «Desconocido»; (3) pantalla para clasificar 182 «Desconocido» + 70 fuera de la base, con cédula; (4) mayo frente a resolución (vista_cambios_mayo_2026); (5) exportar la vista a Excel.
+0. **Análisis Electoral · subir `index.html`** (pestaña «Control por junta» construida el 30 sep, probada con datos simulados; copia previa en `electoral/index.html.bak-2026-09-30`). Nestor: subir al hosting de Análisis Electoral, entrar, abrir Candidatos Seleccionados → Control por junta, generar «Informe PDF» y «Anexo» con datos reales y revisar. Confirmar el título de la firma (hoy: Vicesecretario de Asuntos Municipales).
+0a. **Análisis Electoral · pendiente**: (1) pantalla para clasificar 182 «Desconocido» + 70 fuera de la base, con cédula; (2) mayo frente a resolución en pantalla (vista_cambios_mayo_2026); (3) corregir textos de impugnación que citan la Ley 275-97 (la vigente es la 20-23); (4) poner la carpeta `electoral` bajo git.
 0a. **Registro de encargados provinciales**: decidir A (registra eligiendo municipio de su provincia, fase 84) o B (no registra; ocultar Registrar y bloquear la casilla). Hoy el botón Registrar no hace nada para Manuel.
 0. **Cerrar la prueba de la fase 82 con Manuel**: (a) registrar una persona de prueba y confirmar que aparece el número de formulario; (b) marcarle «Puede ver postulantes» en Editar usuario, recargar su sesión y confirmar que Postulantes vuelve; luego desmarcar.
 0a. **Confirmar la limpieza** de 01200938577 y 07100236442 («2 rows affected» o menos si ya no existían).
@@ -40,6 +41,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Análisis Electoral: pestaña «Control por junta» (KPIs de control FP, barras por partido con denominadores reales, resumen por región, tabla junta por junta con semáforo, panel con los cargos, Excel, Informe PDF de lo general a lo particular con firma, Anexo junta por junta). Probada con datos simulados en el navegador; sintaxis verificada (30 sep 2026).
 
 - Cruce Resolución JCE 08-2026 cerrado: fases 83, 83b y 84 aplicadas; 1,409 de 1,476 electos emparejados y marcados en Análisis Electoral con cargo definitivo; cédula guardada en aspirantes; foto de mayo y vistas creadas. Resultado: FP 457 cargos, 188 titulares (1.º), 40 presidencias (PRM 70); presencia en 160 de 162 juntas (30 sep 2026).
 
