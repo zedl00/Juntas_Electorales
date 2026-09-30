@@ -8,6 +8,20 @@ Cómo empareja: junta → municipio por `junta_nombre` y `nombre`; cédula → n
 
 Cada consulta es una sola sentencia.
 
+## R0 · Verificación de la lectura (OCR) contra el padrón
+R0a · cédulas de la resolución que no existen en el padrón (esperado: 0 o muy pocas):
+```sql
+select junta, municipio_jce, orden, cargo, cedula_fmt, nombre from public.jce_juntas_2026 where nombre_padron is null order by junta, orden;
+```
+R0b · nombres leídos que no coinciden con el nombre oficial del padrón (revisar a ojo; si el OCR leyó mal, el nombre del padrón es el que manda):
+```sql
+select junta, municipio_jce, orden, cedula_fmt, nombre as leido, nombre_padron as padron from public.jce_juntas_2026 where nombre_padron is not null and public._norm_txt(nombre) <> public._norm_txt(nombre_padron) order by junta, orden;
+```
+R0c · resumen de la lectura en una fila:
+```sql
+select count(*) as cargos, count(distinct junta) as juntas, count(*) filter (where nombre_padron is null) as sin_padron, count(*) filter (where nombre_padron is not null and public._norm_txt(nombre) = public._norm_txt(nombre_padron)) as nombre_igual_al_padron, count(*) filter (where nombre_padron is not null and public._norm_txt(nombre) <> public._norm_txt(nombre_padron)) as nombre_distinto from public.jce_juntas_2026;
+```
+
 ## R1 · Juntas sin municipio (deben ser 0; si hay, corregir con R1b y repetir la fase 83)
 ```sql
 select junta, municipio_jce from public.jce_juntas_2026 where municipio_id is null group by 1, 2 order by 1;
