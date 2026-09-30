@@ -85,3 +85,32 @@ Fuerza del Pueblo por junta:
 ```sql
 select junta, municipio, count(*) as cargos_fp, count(*) filter (where titular) as titulares_fp, bool_or(cargo = 'Presidente') as presidente_fp from public.vista_juntas_2026 where partido = 'FP' group by 1, 2 order by 3 desc, 1;
 ```
+
+## Análisis mayo → resolución (vista_cambios_mayo_2026)
+
+Decisión del 30 sep: no se quita ninguna marca. La foto de mayo queda en `jce_seleccion_mayo_2026`.
+
+A1 · Qué pasó con la gente de mayo, por partido:
+```sql
+select coalesce(partido_mayo, '(sin partido)') as partido_mayo, count(*) as personas, count(*) filter (where situacion = 'se mantiene') as se_mantienen, count(*) filter (where situacion = 'cambió de cargo') as cambiaron_de_cargo, count(*) filter (where situacion = 'sustituida') as sustituidas from public.vista_cambios_mayo_2026 group by 1 order by 2 desc;
+```
+A2 · Sustituciones: de qué partido salió el cargo y a qué partido fue:
+```sql
+select coalesce(partido_mayo, '(sin partido)') as salio_de, coalesce(partido_de_quien_ocupa, case when ocupante_fuera_de_la_base then '(no está en la base)' else '(sin partido)' end) as paso_a, count(*) as cargos, count(*) filter (where cargo_mayo in ('Presidente','Primer Vocal','Segundo Vocal','Tercer Vocal','Cuarto Vocal')) as titulares from public.vista_cambios_mayo_2026 where situacion = 'sustituida' group by 1, 2 order by 3 desc;
+```
+A3 · Lista completa de sustituidas, con quién ocupa el cargo:
+```sql
+select municipio, cargo_mayo, persona as salio, partido_mayo, quien_ocupa_su_cargo as entro, partido_de_quien_ocupa as partido_entro from public.vista_cambios_mayo_2026 where situacion = 'sustituida' order by municipio, cargo_mayo;
+```
+A4 · Por municipio: cuánto cambió cada junta respecto a mayo:
+```sql
+select municipio, count(*) as de_mayo, count(*) filter (where situacion = 'se mantiene') as se_mantienen, count(*) filter (where situacion = 'cambió de cargo') as cambiaron_de_cargo, count(*) filter (where situacion = 'sustituida') as sustituidas from public.vista_cambios_mayo_2026 group by 1 order by sustituidas desc, municipio;
+```
+A5 · Saldo por partido en los municipios que tenían lista en mayo: cargos que tenía en mayo y cargos que tiene en la resolución:
+```sql
+select coalesce(p.siglas, '(sin partido / fuera de la base)') as partido, count(distinct s.aspirante_id) as cargos_en_mayo, count(distinct (j.junta, j.orden)) as cargos_en_resolucion from public.partidos p full join public.jce_seleccion_mayo_2026 s on s.partido_id = p.id full join public.jce_juntas_2026 j on j.partido_id = p.id and j.municipio_id in (select distinct municipio_id from public.jce_seleccion_mayo_2026) group by 1 having count(distinct s.aspirante_id) > 0 or count(distinct (j.junta, j.orden)) > 0 order by 3 desc;
+```
+A6 · Una junta completa, mayo frente a hoy:
+```sql
+select cargo, persona, partido, estaba_en_mayo, respecto_a_mayo, cargo_mayo from public.vista_juntas_2026 where municipio_jce = 'BOCA CHICA' order by orden;
+```
