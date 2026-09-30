@@ -4,7 +4,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 
 ## Próximo
 
-0. **Cruce Resolución JCE 08-2026**: fase 83 aplicada y cruce hecho (1,409 de 1,476 emparejados; 67 no están en la base). Decisión: no se desmarca a nadie; la foto de mayo se guarda aparte para analizar cambios. Falta: aplicar fase 84 (cédula, foto de mayo, vistas), correr A1-A5, clasificar los 181 electos con partido «Desconocido», y decidir si el análisis mayo→resolución se muestra como pestaña en Análisis Electoral.
+0. **Análisis Electoral · pantallas sobre el cruce** (pedido 30 sep): (1) control de cada junta: presidencia y mayoría de titulares por partido, con filtros; (2) reporte para impugnaciones (plazo ~14 oct): juntas sin titular FP y cargos en manos de «Desconocido»; (3) pantalla para clasificar 182 «Desconocido» + 70 fuera de la base, con cédula; (4) mayo frente a resolución (vista_cambios_mayo_2026); (5) exportar la vista a Excel.
 0a. **Registro de encargados provinciales**: decidir A (registra eligiendo municipio de su provincia, fase 84) o B (no registra; ocultar Registrar y bloquear la casilla). Hoy el botón Registrar no hace nada para Manuel.
 0. **Cerrar la prueba de la fase 82 con Manuel**: (a) registrar una persona de prueba y confirmar que aparece el número de formulario; (b) marcarle «Puede ver postulantes» en Editar usuario, recargar su sesión y confirmar que Postulantes vuelve; luego desmarcar.
 0a. **Confirmar la limpieza** de 01200938577 y 07100236442 («2 rows affected» o menos si ya no existían).
@@ -40,6 +40,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Cruce Resolución JCE 08-2026 cerrado: fases 83, 83b y 84 aplicadas; 1,409 de 1,476 electos emparejados y marcados en Análisis Electoral con cargo definitivo; cédula guardada en aspirantes; foto de mayo y vistas creadas. Resultado: FP 457 cargos, 188 titulares (1.º), 40 presidencias (PRM 70); presencia en 160 de 162 juntas (30 sep 2026).
 
 - Resolución JCE 08-2026 leída por OCR y validada (162 juntas, 1,476 cargos, cédulas con dígito verificador correcto). Fase 83 escrita y probada en PostgreSQL local; consultas de cruce R1-R8 documentadas (30 sep 2026).
 
