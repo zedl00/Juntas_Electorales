@@ -5,7 +5,7 @@ Lista viva. Se actualiza en cada sesión de trabajo. Lo primero de «Próximo» 
 ## Próximo
 
 0. **Análisis Electoral · subir `index.html`** (pestaña «Control por junta» construida el 30 sep, probada con datos simulados; copia previa en `electoral/index.html.bak-2026-09-30`). Nestor: subir al hosting de Análisis Electoral, entrar, abrir Candidatos Seleccionados → Control por junta, generar «Informe PDF» y «Anexo» con datos reales y revisar. Créditos en una línea discreta al pie de la página 1 del informe y del anexo: Secretaría de Asuntos Electorales · Henry Merán | Comisión de Juntas Municipales · Adalgisa Pujols | Plataforma y Análisis de Datos · Néstor Valdez (confirmar acento de «Merán»).
-0a. **Análisis Electoral · pendiente**: (1) pantalla para clasificar 182 «Desconocido» + 70 fuera de la base, con cédula; (2) mayo frente a resolución en pantalla (vista_cambios_mayo_2026); (3) corregir textos de impugnación que citan la Ley 275-97 (la vigente es la 20-23); (4) poner la carpeta `electoral` bajo git.
+0a. **Análisis Electoral · pendiente**: (1) pantalla para clasificar 182 «Desconocido» + 70 fuera de la base, con cédula; (2) [hecho 30 sep] mayo frente a resolución en pantalla; (3) corregir textos de impugnación que citan la Ley 275-97 (la vigente es la 20-23); (4) poner la carpeta `electoral` bajo git.
 0a. **Registro de encargados provinciales**: decidir A (registra eligiendo municipio de su provincia, fase 84) o B (no registra; ocultar Registrar y bloquear la casilla). Hoy el botón Registrar no hace nada para Manuel.
 0. **Cerrar la prueba de la fase 82 con Manuel**: (a) registrar una persona de prueba y confirmar que aparece el número de formulario; (b) marcarle «Puede ver postulantes» en Editar usuario, recargar su sesión y confirmar que Postulantes vuelve; luego desmarcar.
 0a. **Confirmar la limpieza** de 01200938577 y 07100236442 («2 rows affected» o menos si ya no existían).
@@ -41,6 +41,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 - Al recorrer `pg_proc` con `pg_get_functiondef`, filtrar siempre `p.prokind = 'f'`: las funciones agregadas hacen fallar la consulta y revierten la migración.
 
 ## Hecho
+
+- Control por junta: panel «Mayo → Resolución» sobre vista_cambios_mayo_2026 (siguen / mismo cargo / otro cargo / sustituidas, FP en mayo, flujos de sustitución por partido, filtros, Excel) e informe PDF propio con tabla por partido, flujos, sustituidas y cambios de cargo. Verificado con datos simulados (30 sep 2026).
 
 - Control por junta: dos informes PDF separados y presentables: «Informe de impugnaciones» (cifras por nivel, criterio y plazo, tabla por región, lista por nivel y composición completa de cada junta prioritaria o a evaluar) y «Sin identificar» (cifras, origen Desconocido/No está en la base, tabla por región, titulares primero y suplentes aparte, con columna «Partido (completar)»). Verificados con datos simulados (30 sep 2026).
 
