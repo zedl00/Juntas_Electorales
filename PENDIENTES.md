@@ -42,6 +42,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Hecho
 
+- Control por junta: filas de indicadores rotuladas «POR JUNTAS» y «POR CARGOS» en pantalla y PDF, con la explicación numérica de que los cargos titulares de FP se reparten en N juntas (30 sep 2026).
+
 - Control por junta: indicadores rehechos para que cuadren entre sí y con los gráficos (juntas = con algún titular FP + sin titular FP; preside FP = barra de presidencias; titulares FP = barra de titulares, desglosados en presidentes, 1.º y 2.º vocales; cargos FP = barra de cargos). Explicaciones bajo cifras y tablas; cierre con Comisión de Juntas Electorales, Coordinación Adalgisa Pujols, Análisis de Datos Néstor Valdez. Verificado en PDF con datos simulados (30 sep 2026).
 
 - Análisis Electoral: pestaña «Control por junta» (KPIs de control FP, barras por partido con denominadores reales, resumen por región, tabla junta por junta con semáforo, panel con los cargos, Excel, Informe PDF de lo general a lo particular con firma, Anexo junta por junta). Probada con datos simulados en el navegador; sintaxis verificada (30 sep 2026).
