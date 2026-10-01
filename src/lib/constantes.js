@@ -19,6 +19,14 @@ export const estadoLbl = {
   en_formacion: 'En formación', aprobado: 'Aprobado', no_aprobado: 'No aprobado', designado: 'Designado', acreditado: 'Acreditado'
 };
 
+/* Verificación de membresía con la Secretaría de Organización (fase 85) */
+export const miembroLbl = { pendiente: 'Sin verificar', enviado: 'Enviado a Organización', miembro: 'Miembro', no_miembro: 'No miembro', no_localizado: 'No localizado', en_revision: 'En revisión' };
+export const miembroCls = {
+  pendiente: 'border-line bg-paper text-mut', enviado: 'border-sky-200 bg-sky-50 text-sky-800',
+  miembro: 'border-fp-200 bg-fp-50 text-fp-800', no_miembro: 'border-red-200 bg-red-50 text-red-700',
+  no_localizado: 'border-amber-200 bg-amber-50 text-amber-800', en_revision: 'border-line bg-paper text-ink'
+};
+
 export const estadoCls = {
   postulado: 'border-fp-200 bg-fp-50 text-fp-800', validado: 'border-fp-600 bg-fp-600 text-white',
   devuelto: 'border-amber-200 bg-amber-50 text-amber-800', rechazado: 'border-red-200 bg-red-50 text-red-700',

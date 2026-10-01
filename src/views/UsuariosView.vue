@@ -536,12 +536,13 @@ const irA = (id) => {
 
 /* ── Pestañas: Usuarios · Asistente · Configuración (la pestaña viaja en ?t= para enlazar directo) ── */
 const route = useRoute(); const router = useRouter();
-const tab = ref(['usuarios','accesos','asistente','config'].includes(route.query.t) ? route.query.t : 'usuarios');
+const tab = ref(['usuarios','accesos','asistente','verificacion','config'].includes(route.query.t) ? route.query.t : 'usuarios');
 watch(tab, v => router.replace({ query: { ...route.query, t: v } }));
 const tabs = [
   { k: 'usuarios',  txt: 'Usuarios' },
   { k: 'accesos',   txt: 'Accesos y seguridad' },
   { k: 'asistente', txt: 'Asistente de consulta' },
+  { k: 'verificacion', txt: 'Verificación de miembros' },
   { k: 'config',    txt: 'Configuración' }
 ];
 /* Bandejas plegables de la pestaña Accesos: cada una se abre o cierra por separado */
@@ -638,7 +639,83 @@ const guardarPermRol = async (r, campo, valor) => {
   t('Permiso actualizado', 'ok');
 };
 
-onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol(); cargarUsrs(); cargarSolis(); cargarWa(); cargarTg(); });
+onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol(); cargarUsrs(); cargarSolis(); cargarWa(); cargarTg(); if (tab.value === 'verificacion') cargarVerif(); });
+watch(tab, v => { if (v === 'verificacion' && !verif.value.cargado) cargarVerif(); });
+
+/* ── Verificación de membresía con la Secretaría de Organización (fase 85) ── */
+const verif = ref({ cargado: false, busy: false, resumen: {}, lotes: [], clientes: [], bitacora: [], cfg: { lote_tamano: 200, lote_maximo: 500 } });
+const verifNuevo = ref({ nombre: '', limite: '' });
+const verifClave = ref(null);          // clave recién creada: se muestra una sola vez
+const verifResp = ref({ texto: '', resultado: null, busy: false });
+const verifMostrar = ref({ clientes: true, bitacora: false, respuesta: true });
+const cargarVerif = async () => {
+  verif.value.busy = true;
+  const [r, l, c, b] = await Promise.all([
+    sb.rpc('portal_verif_resumen'), sb.rpc('portal_verif_lotes', { p_limit: 50 }), sb.rpc('portal_api_clientes'), sb.rpc('portal_api_bitacora', { p_limit: 80 })
+  ]);
+  verif.value.busy = false;
+  if (r.error) { t('Verificación: ' + r.error.message, 'err'); return; }
+  verif.value.resumen = r.data || {};
+  if (r.data?.config) verif.value.cfg = { ...r.data.config };
+  verif.value.lotes = l.data || []; verif.value.clientes = c.data || []; verif.value.bitacora = b.data || [];
+  verif.value.cargado = true;
+};
+const descargarTexto = (nombre, texto) => {
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + texto], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a'); a.href = url; a.download = nombre; a.click(); URL.revokeObjectURL(url);
+};
+const csvDeLote = d => 'cedula,estado,nota\n' + (d.registros || []).map(r => r.cedula + ',' + (r.estado && !['enviado','pendiente'].includes(r.estado) ? r.estado : '') + ',').join('\n');
+const crearLoteManual = async () => {
+  if (!confirm('¿Generar un lote manual con hasta ' + verif.value.cfg.lote_tamano + ' cédulas pendientes?\n\nQuedarán marcadas como enviadas a la Secretaría de Organización y se descargará el archivo para entregarlo.')) return;
+  const { data, error } = await sb.rpc('portal_verif_lote_crear', { p_via: 'manual' });
+  if (error) { t('No se pudo crear el lote: ' + error.message, 'err'); return; }
+  if (!data?.cantidad) { t('No hay cédulas pendientes de verificación', 'ok'); return; }
+  descargarTexto('lote_' + data.lote + '_verificacion.csv', csvDeLote(data));
+  t('Lote ' + data.lote + ' generado: ' + data.cantidad + ' cédulas', 'ok'); cargarVerif();
+};
+const descargarLote = async id => {
+  const { data, error } = await sb.rpc('portal_verif_lote_obtener', { p_lote: id });
+  if (error || !data) { t('No se pudo descargar el lote', 'err'); return; }
+  descargarTexto('lote_' + id + '_verificacion.csv', csvDeLote(data));
+};
+const leerArchivoResp = e => {
+  const f = e.target.files?.[0]; if (!f) return;
+  const rd = new FileReader(); rd.onload = () => { verifResp.value.texto = String(rd.result || ''); }; rd.readAsText(f, 'utf-8');
+};
+const parseResp = txt => txt.replace(/^\uFEFF/, '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  .map(l => l.split(/[,;\t]/).map(x => x.trim().replace(/^"|"$/g, '')))
+  .filter(c => c[0] && !/^c[eé]dula$/i.test(c[0]))
+  .map(c => ({ cedula: c[0], estado: (c[1] || '').toLowerCase().replace(/\s+/g, '_'), nota: c[2] || null }));
+const cargarRespuesta = async () => {
+  const items = parseResp(verifResp.value.texto);
+  if (!items.length) { t('No se encontraron filas con cédula y estado', 'err'); return; }
+  if (!confirm('¿Cargar ' + items.length + ' resultado(s) de la Secretaría de Organización?')) return;
+  verifResp.value.busy = true;
+  const { data, error } = await sb.rpc('portal_verif_resultados', { p_items: items, p_fuente: 'manual' });
+  verifResp.value.busy = false;
+  if (error) { t('No se pudo cargar: ' + error.message, 'err'); return; }
+  verifResp.value.resultado = data; verifResp.value.texto = '';
+  t('Cargados ' + data.aceptados + ' · rechazados ' + (data.rechazados?.length || 0), data.aceptados ? 'ok' : 'err'); cargarVerif();
+};
+const crearCliente = async () => {
+  const nombre = verifNuevo.value.nombre.trim(); if (nombre.length < 3) { t('Escribe el nombre del consumidor', 'err'); return; }
+  const { data, error } = await sb.rpc('portal_api_cliente_crear', { p_nombre: nombre, p_limite: verifNuevo.value.limite ? +verifNuevo.value.limite : null });
+  if (error) { t('No se pudo crear: ' + error.message, 'err'); return; }
+  verifClave.value = data; verifNuevo.value = { nombre: '', limite: '' }; cargarVerif();
+};
+const revocarCliente = async c => {
+  if (!confirm('¿Revocar la clave de «' + c.nombre + '»? Dejará de poder llamar al API de inmediato.')) return;
+  const { error } = await sb.rpc('portal_api_cliente_revocar', { p_id: c.id });
+  if (error) { t('No se pudo revocar: ' + error.message, 'err'); return; }
+  t('Clave revocada', 'ok'); cargarVerif();
+};
+const copiarClave = async () => { try { await navigator.clipboard.writeText(verifClave.value.clave); t('Clave copiada', 'ok'); } catch { t('No se pudo copiar; selecciónala y cópiala a mano', 'err'); } };
+const guardarCfgVerif = async () => {
+  const { error } = await sb.rpc('portal_verif_config_set', { p_lote: +verif.value.cfg.lote_tamano || 200, p_maximo: +verif.value.cfg.lote_maximo || 500 });
+  if (error) { t('No se pudo guardar: ' + error.message, 'err'); return; }
+  t('Tamaño de lote guardado', 'ok'); cargarVerif();
+};
+const verifTotalVerificados = computed(() => { const r = verif.value.resumen; return (r.miembro || 0) + (r.no_miembro || 0) + (r.no_localizado || 0) + (r.en_revision || 0); });
 </script>
 
 <template>
@@ -1229,6 +1306,146 @@ onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr();
       </div>
     </div>
 
+    </template>
+
+    <template v-if="tab === 'verificacion'">
+    <p class="text-[12px] text-mut max-w-[90ch]">Verificación de membresía con la <b>Secretaría de Organización</b>: el portal arma lotes de cédulas registradas; la Secretaría devuelve cada cédula con su estado (miembro, no miembro, no localizado, en revisión); el portal lo guarda y lo muestra en Postulantes. Funciona por API o por archivo, con el mismo circuito. Los estados solo se marcan y se reportan: no bloquean nada.</p>
+
+    <!-- Cifras -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+      <div class="rounded-lg border border-line bg-white px-2.5 py-2"><div class="text-[9.5px] font-bold uppercase tracking-wider text-mut">Pendientes</div><div class="text-[16px] font-bold tabular-nums">{{ fmt(verif.resumen.pendiente || 0) }}</div><div class="text-[9.5px] text-mut">aún no enviados</div></div>
+      <div class="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-2"><div class="text-[9.5px] font-bold uppercase tracking-wider text-sky-800">Enviados</div><div class="text-[16px] font-bold tabular-nums text-sky-900">{{ fmt(verif.resumen.enviado || 0) }}</div><div class="text-[9.5px] text-mut">sin respuesta</div></div>
+      <div class="rounded-lg border border-fp-200 bg-fp-25 px-2.5 py-2"><div class="text-[9.5px] font-bold uppercase tracking-wider text-fp-700">Miembros</div><div class="text-[16px] font-bold tabular-nums text-fp-800">{{ fmt(verif.resumen.miembro || 0) }}</div><div class="text-[9.5px] text-mut">confirmados</div></div>
+      <div class="rounded-lg border border-red-200 bg-red-50 px-2.5 py-2"><div class="text-[9.5px] font-bold uppercase tracking-wider text-red-700">No miembros</div><div class="text-[16px] font-bold tabular-nums text-red-800">{{ fmt(verif.resumen.no_miembro || 0) }}</div><div class="text-[9.5px] text-mut">existen, no son miembros</div></div>
+      <div class="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2"><div class="text-[9.5px] font-bold uppercase tracking-wider text-amber-800">No localizados</div><div class="text-[16px] font-bold tabular-nums text-amber-900">{{ fmt(verif.resumen.no_localizado || 0) }}</div><div class="text-[9.5px] text-mut">no están en su padrón</div></div>
+      <div class="rounded-lg border border-line bg-white px-2.5 py-2"><div class="text-[9.5px] font-bold uppercase tracking-wider text-mut">En revisión</div><div class="text-[16px] font-bold tabular-nums">{{ fmt(verif.resumen.en_revision || 0) }}</div><div class="text-[9.5px] text-mut">vuelven a salir</div></div>
+    </div>
+    <div class="text-[11.5px] text-mut">{{ fmt(verif.resumen.total || 0) }} postulantes activos · {{ fmt(verifTotalVerificados) }} con respuesta · {{ fmt(verif.resumen.lotes || 0) }} lotes · última respuesta {{ verif.resumen.ultima_respuesta ? fechaHora(verif.resumen.ultima_respuesta) : 'ninguna' }} <button class="btn-o btn-s ml-2" :disabled="verif.busy" @click="cargarVerif">{{ verif.busy ? 'Cargando…' : 'Actualizar' }}</button></div>
+
+    <!-- Lotes -->
+    <div class="card overflow-hidden">
+      <div class="p-4 border-b border-line flex items-center gap-2 flex-wrap">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Lotes enviados a la Secretaría de Organización</h3>
+        <button class="btn-p btn-s" @click="crearLoteManual" title="Crea un lote con las cédulas pendientes y descarga el archivo para entregarlo">⤓ Generar lote manual ({{ verif.cfg.lote_tamano }})</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[720px]">
+          <thead class="bg-paper border-b border-line"><tr>
+            <th class="th">Lote</th><th class="th">Creado</th><th class="th">Vía</th><th class="th text-right">Cédulas</th><th class="th text-right">Respondidas</th>
+            <th class="th text-center text-fp-700">Miembro</th><th class="th text-center text-red-700">No miembro</th><th class="th text-center text-amber-700">No loc.</th><th class="th text-center">Revisión</th><th class="th text-center">Sin resp.</th><th class="th"></th>
+          </tr></thead>
+          <tbody>
+            <tr v-if="!verif.lotes.length"><td colspan="11" class="td text-center text-mut py-6">Aún no se ha generado ningún lote.</td></tr>
+            <tr v-for="l in verif.lotes" :key="l.id" class="border-b border-line/60">
+              <td class="td font-semibold">#{{ l.id }}</td>
+              <td class="td text-mut text-[12px] whitespace-nowrap">{{ fechaHora(l.creado_en) }}<span class="block text-[10.5px]">{{ l.cliente || l.creado_por || '' }}</span></td>
+              <td class="td"><span class="badge" :class="l.via === 'api' ? 'border-sky-200 bg-sky-50 text-sky-800' : 'border-line bg-paper text-mut'">{{ l.via === 'api' ? 'API' : 'Archivo' }}</span></td>
+              <td class="td text-right tabular-nums">{{ l.cantidad }}</td>
+              <td class="td text-right tabular-nums font-semibold">{{ l.respondidos }}</td>
+              <td class="td text-center tabular-nums text-fp-700">{{ l.miembro || '' }}</td>
+              <td class="td text-center tabular-nums text-red-700">{{ l.no_miembro || '' }}</td>
+              <td class="td text-center tabular-nums text-amber-700">{{ l.no_localizado || '' }}</td>
+              <td class="td text-center tabular-nums">{{ l.en_revision || '' }}</td>
+              <td class="td text-center tabular-nums text-mut">{{ l.sin_respuesta || '' }}</td>
+              <td class="td text-right"><button class="btn-o btn-s" @click="descargarLote(l.id)" title="Descargar el archivo del lote con su estado actual">⤓ CSV</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Cargar respuesta (manual) -->
+    <div class="card overflow-hidden">
+      <div class="p-4 border-b border-line flex items-center gap-2 cursor-pointer select-none" @click="verifMostrar.respuesta = !verifMostrar.respuesta">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Cargar respuesta de la Secretaría (archivo)</h3>
+        <span class="text-mut text-[13px]">{{ verifMostrar.respuesta ? '▴' : '▾' }}</span>
+      </div>
+      <div v-show="verifMostrar.respuesta" class="p-4 space-y-3">
+        <p class="text-[12px] text-mut max-w-[90ch]">Archivo CSV con tres columnas: <b>cedula, estado, nota</b>. Estados válidos: <code>miembro</code>, <code>no_miembro</code>, <code>no_localizado</code>, <code>en_revision</code>. Se acepta el mismo archivo del lote con la columna estado completada. Las filas que no cumplan se rechazan con su motivo; el resto se carga.</p>
+        <div class="flex flex-wrap items-center gap-3">
+          <input type="file" accept=".csv,.txt" class="text-[12.5px]" @change="leerArchivoResp">
+          <span class="text-[11.5px] text-mut">o pega el contenido:</span>
+        </div>
+        <textarea v-model="verifResp.texto" rows="4" class="inp font-mono text-[12px]" placeholder="cedula,estado,nota&#10;00100000017,miembro,&#10;00100000025,no_miembro,renunció en 2024"></textarea>
+        <div class="flex items-center gap-3">
+          <button class="btn-p btn-s" :disabled="verifResp.busy || !verifResp.texto.trim()" @click="cargarRespuesta">{{ verifResp.busy ? 'Cargando…' : 'Cargar resultados' }}</button>
+          <span v-if="verifResp.resultado" class="text-[12px]">Aceptados <b class="text-fp-700">{{ verifResp.resultado.aceptados }}</b> · rechazados <b class="text-red-700">{{ verifResp.resultado.rechazados?.length || 0 }}</b></span>
+        </div>
+        <div v-if="verifResp.resultado?.rechazados?.length" class="errbx text-[12px]">
+          <div class="font-semibold mb-1">Rechazados</div>
+          <div v-for="(r, i) in verifResp.resultado.rechazados.slice(0, 50)" :key="i">{{ r.cedula }} · {{ r.motivo }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Consumidores del API -->
+    <div class="card overflow-hidden">
+      <div class="p-4 border-b border-line flex items-center gap-2 cursor-pointer select-none" @click="verifMostrar.clientes = !verifMostrar.clientes">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Consumidores del API</h3>
+        <span class="badge border-line bg-paper text-mut">{{ verif.clientes.filter(c => c.activo).length }} activos</span>
+        <span class="text-mut text-[13px]">{{ verifMostrar.clientes ? '▴' : '▾' }}</span>
+      </div>
+      <div v-show="verifMostrar.clientes" class="p-4 space-y-3">
+        <p class="text-[12px] text-mut max-w-[90ch]">Cada consumidor recibe una clave propia. La clave se muestra <b>una sola vez</b> al crearla; el portal guarda solo su huella. Si se pierde o se filtra, se revoca y se crea otra. La documentación para la Secretaría está en <code>docs/API_VERIFICACION_MIEMBROS.md</code>.</p>
+        <div v-if="verifClave" class="rounded-xl border border-fp-300 bg-fp-25 p-3">
+          <div class="text-[12.5px] font-semibold">Clave de «{{ verifClave.nombre }}». Cópiala ahora: no se volverá a mostrar.</div>
+          <div class="flex items-center gap-2 mt-2"><code class="inp font-mono text-[12px] !py-1.5 select-all">{{ verifClave.clave }}</code><button class="btn-p btn-s" @click="copiarClave">Copiar</button><button class="btn-o btn-s" @click="verifClave = null">Cerrar</button></div>
+        </div>
+        <div class="flex flex-wrap items-end gap-2">
+          <div><label class="lbl">Nombre del consumidor</label><input v-model="verifNuevo.nombre" class="inp !w-64" placeholder="Secretaría de Organización"></div>
+          <div><label class="lbl">Límite por lote (opcional)</label><input v-model="verifNuevo.limite" type="number" min="1" class="inp !w-28" :placeholder="String(verif.cfg.lote_tamano)"></div>
+          <button class="btn-p btn-s" @click="crearCliente">+ Crear clave</button>
+        </div>
+        <table class="w-full">
+          <thead class="bg-paper border-b border-line"><tr><th class="th">Consumidor</th><th class="th">Clave</th><th class="th">Límite</th><th class="th">Creada</th><th class="th">Último uso</th><th class="th">Estado</th><th class="th"></th></tr></thead>
+          <tbody>
+            <tr v-if="!verif.clientes.length"><td colspan="7" class="td text-center text-mut py-5">Ningún consumidor todavía.</td></tr>
+            <tr v-for="c in verif.clientes" :key="c.id" class="border-b border-line/60">
+              <td class="td font-semibold">{{ c.nombre }}</td>
+              <td class="td font-mono text-[12px] text-mut">{{ c.prefijo }}…</td>
+              <td class="td text-[12px]">{{ c.limite_lote || ('(' + verif.cfg.lote_tamano + ')') }}</td>
+              <td class="td text-[12px] text-mut whitespace-nowrap">{{ fechaHora(c.creado_en) }}<span class="block text-[10.5px]">{{ c.creado_por || '' }}</span></td>
+              <td class="td text-[12px] text-mut whitespace-nowrap">{{ c.ultimo_uso ? fechaHora(c.ultimo_uso) : '—' }}</td>
+              <td class="td"><span class="badge" :class="c.activo ? 'border-fp-200 bg-fp-50 text-fp-800' : 'border-red-200 bg-red-50 text-red-700'">{{ c.activo ? 'Activa' : 'Revocada' }}</span></td>
+              <td class="td text-right"><button v-if="c.activo" class="btn-o btn-s !text-red-700" @click="revocarCliente(c)">Revocar</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bitácora -->
+    <div class="card overflow-hidden">
+      <div class="p-4 border-b border-line flex items-center gap-2 cursor-pointer select-none" @click="verifMostrar.bitacora = !verifMostrar.bitacora">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Bitácora del API</h3>
+        <span class="badge border-line bg-paper text-mut">{{ verif.bitacora.length }} últimas</span>
+        <span class="text-mut text-[13px]">{{ verifMostrar.bitacora ? '▴' : '▾' }}</span>
+      </div>
+      <div v-show="verifMostrar.bitacora" class="overflow-x-auto">
+        <table class="w-full min-w-[720px]">
+          <thead class="bg-paper border-b border-line"><tr><th class="th">Cuándo</th><th class="th">Consumidor</th><th class="th">Llamada</th><th class="th">IP</th><th class="th text-right">Recibidos</th><th class="th text-right">Aceptados</th><th class="th text-right">Rechazados</th><th class="th">Resultado</th></tr></thead>
+          <tbody>
+            <tr v-if="!verif.bitacora.length"><td colspan="8" class="td text-center text-mut py-5">Sin llamadas registradas.</td></tr>
+            <tr v-for="b in verif.bitacora" :key="b.id" class="border-b border-line/60 text-[12px]">
+              <td class="td text-mut whitespace-nowrap">{{ fechaHora(b.created_at) }}</td><td class="td">{{ b.cliente }}</td><td class="td font-mono">{{ b.endpoint }}</td><td class="td text-mut">{{ b.ip || '' }}</td>
+              <td class="td text-right tabular-nums">{{ b.n_recibidos || '' }}</td><td class="td text-right tabular-nums">{{ b.n_aceptados || '' }}</td><td class="td text-right tabular-nums text-red-700">{{ b.n_rechazados || '' }}</td>
+              <td class="td"><span class="badge" :class="b.resultado === 'ok' ? 'border-fp-200 bg-fp-50 text-fp-800' : 'border-red-200 bg-red-50 text-red-700'">{{ b.resultado }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Configuración del lote -->
+    <div class="card p-4">
+      <h3 class="font-serif font-bold text-[15px] mb-1">Tamaño del lote</h3>
+      <p class="text-[12px] text-mut mb-3 max-w-[80ch]">Cuántas cédulas salen en cada lote si el consumidor no pide otra cantidad, y el máximo que puede pedir. La Secretaría pidió recibir de 200 en 200.</p>
+      <div class="flex flex-wrap items-end gap-3">
+        <div><label class="lbl">Por defecto</label><input v-model.number="verif.cfg.lote_tamano" type="number" min="1" class="inp !w-28"></div>
+        <div><label class="lbl">Máximo por llamada</label><input v-model.number="verif.cfg.lote_maximo" type="number" min="1" class="inp !w-28"></div>
+        <button class="btn-p btn-s" @click="guardarCfgVerif">Guardar</button>
+      </div>
+    </div>
     </template>
 
     <template v-if="tab === 'config'">

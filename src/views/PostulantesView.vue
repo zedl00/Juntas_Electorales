@@ -36,7 +36,7 @@ import { perfil, esAdmin, scopeAmplio, canRegister, permisos, velo } from '../st
 import { regiones, provsOf, munsOf, nombreMun } from '../stores/catalogo';
 import { cargarKpi, cargarTerr } from '../stores/kpi';
 import { printIndividual, printRelacion, printBusy, docsCfg } from '../stores/print';
-import { cargoLbl, cargoCorto, estadoLbl, estadoCls, nivelOpts } from '../lib/constantes';
+import { cargoLbl, cargoCorto, estadoLbl, estadoCls, nivelOpts, miembroLbl, miembroCls } from '../lib/constantes';
 import { fmt, fmtCed, soloDig, edad, fecha, fechaHora } from '../lib/formato';
 import { t } from '../stores/toasts';
 
@@ -50,7 +50,7 @@ const page = ref(0), pageSize = ref(50);
 /* Columna Territorio: alcance amplio, o usuario de nivel provincial sin municipio (fase 81) */
 const verTerritorio = computed(() => scopeAmplio.value || !perfil.value?.municipio_id);
 const pSort = reactive({ c: 'created_at', asc: false });
-const f = reactive({ q: '', estado: '', cargo: '', sexo: '', exp: '', region: '', prov: '', mun: 0, firme: '' });
+const f = reactive({ q: '', estado: '', cargo: '', sexo: '', exp: '', region: '', prov: '', mun: 0, firme: '', miembro: '' });
 
 const buildQ = (sel, withCount) => {
   let q = sb.from('postulantes_2028').select(sel, withCount ? { count: 'exact' } : undefined);
@@ -62,6 +62,7 @@ const buildQ = (sel, withCount) => {
     q = q.or(parts.join(','));
   }
   if (f.estado) q = q.eq('estado', f.estado);
+  if (f.miembro) q = q.eq('miembro_estado', f.miembro);
   if (f.cargo)  q = q.eq('cargo_postulado', f.cargo);
   if (f.sexo)   q = q.eq('sexo', f.sexo);
   if (f.exp === 'si')   q = q.or('experiencia_2020.eq.true,experiencia_2024.eq.true');
@@ -114,12 +115,12 @@ const exportCSV = async () => {
   csvBusy.value = false;
   if (!all) return;
   const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-  const head = ['Folio','Cédula','Nombres','Apellidos','Sexo','F. Nacimiento','Teléfono','WhatsApp','Correo','Dirección','Nivel','Ocupación','Vínculo FP','Cargo','Colegio','Recinto','Circunscripción','Municipio','Región','Exp. 2024','Etapa','Notas','Registrado'];
+  const head = ['Folio','Cédula','Nombres','Apellidos','Sexo','F. Nacimiento','Teléfono','WhatsApp','Correo','Dirección','Nivel','Ocupación','Vínculo FP','Cargo','Colegio','Recinto','Circunscripción','Municipio','Región','Exp. 2024','Etapa','Miembro','Notas','Registrado'];
   const lines = all.map(r => [
     r.numero_formulario, fmtCed(r.cedula), r.nombres, (r.apellido1 + ' ' + (r.apellido2 || '')).trim(), r.sexo, r.fecha_nacimiento,
     r.telefono, r.whatsapp, r.email, r.direccion, r.nivel_academico, r.ocupacion, r.militancia, cargoLbl[r.cargo_postulado] || r.cargo_postulado,
     (r.codigo_colegio || r.id_colegio_padron || ''), r.recinto_nombre, r.circunscripcion, nombreMun(r.municipio_id), r.macroregion,
-    r.experiencia_2020 ? 'Sí' : 'No', r.experiencia_2024 ? 'Sí' : 'No', r.candidato_firme ? 'Sí' : 'No', estadoLbl[r.estado] || r.estado, r.notas, fechaHora(r.created_at)
+    r.experiencia_2020 ? 'Sí' : 'No', r.experiencia_2024 ? 'Sí' : 'No', r.candidato_firme ? 'Sí' : 'No', estadoLbl[r.estado] || r.estado, miembroLbl[r.miembro_estado] || '', r.notas, fechaHora(r.created_at)
   ].map(esc).join(','));
   const csv = '\uFEFF' + head.map(esc).join(',') + '\n' + lines.join('\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -264,6 +265,7 @@ onActivated(() => { if (!route.query.mun) cargarPost(); });
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         <input v-model="f.q" class="inp !py-2 text-[12.5px] col-span-2 sm:col-span-1" placeholder="Cédula o nombre…" @keyup.enter="aplicarF">
         <select v-model="f.estado" class="inp !py-2 text-[12.5px]" @change="aplicarF"><option value="">Etapa: todas</option><option v-for="(l, k) in estadoLbl" :key="k" :value="k">{{ l }}</option></select>
+        <select v-model="f.miembro" class="inp !py-2 text-[12.5px]" @change="aplicarF" title="Verificación de membresía con la Secretaría de Organización"><option value="">Miembro: todos</option><option v-for="(l, k) in miembroLbl" :key="k" :value="k">{{ l }}</option></select>
         <select v-model="f.cargo" class="inp !py-2 text-[12.5px]" @change="aplicarF"><option value="">Cargo: todos</option><option v-for="(l, k) in cargoLbl" :key="k" :value="k">{{ l }}</option></select>
         <select v-model="f.sexo" class="inp !py-2 text-[12.5px]" @change="aplicarF"><option value="">Sexo: todos</option><option value="M">Masculino</option><option value="F">Femenino</option></select>
         <select v-model="f.exp" class="inp !py-2 text-[12.5px]" @change="aplicarF"><option value="">Experiencia: todos</option><option value="si">Con experiencia</option><option value="2020">Solo 2020</option><option value="2024">Solo 2024</option><option value="no">Sin experiencia</option></select>
@@ -290,6 +292,7 @@ onActivated(() => { if (!route.query.mun) cargarPost(); });
               <th class="th cursor-pointer" @click="sortP('id_colegio_padron')">Colegio {{ pArrow('id_colegio_padron') }}</th>
               <th v-if="verTerritorio" class="th cursor-pointer" @click="sortP('municipio_id')">Territorio {{ pArrow('municipio_id') }}</th>
               <th class="th cursor-pointer" @click="sortP('estado')">Etapa {{ pArrow('estado') }}</th>
+              <th class="th cursor-pointer" @click="sortP('miembro_estado')" title="Verificación con la Secretaría de Organización">Miembro {{ pArrow('miembro_estado') }}</th>
               <th class="th cursor-pointer" @click="sortP('created_at')">Fecha {{ pArrow('created_at') }}</th>
             </tr>
           </thead>
@@ -303,6 +306,7 @@ onActivated(() => { if (!route.query.mun) cargarPost(); });
               <td class="td whitespace-nowrap"><span class="tabular-nums">{{ r.codigo_colegio || r.id_colegio_padron || '—' }}</span><span class="block text-[10px] text-mut max-w-[140px] truncate">{{ r.recinto_nombre }}</span></td>
               <td v-if="verTerritorio" class="td text-mut whitespace-nowrap">{{ nombreMun(r.municipio_id) }}</td>
               <td class="td"><span class="badge" :class="estadoCls[r.estado]">{{ estadoLbl[r.estado] }}</span></td>
+              <td class="td"><span class="badge" :class="miembroCls[r.miembro_estado] || miembroCls.pendiente" :title="r.miembro_nota || ''">{{ miembroLbl[r.miembro_estado] || 'Sin verificar' }}</span></td>
               <td class="td text-mut whitespace-nowrap text-[12px]">{{ fecha(r.created_at) }}</td>
             </tr>
             <tr v-if="!rows.length && !pBusy"><td :colspan="scopeAmplio ? 9 : 8" class="td text-center text-mut py-10">Sin postulantes con estos criterios.<span v-if="canRegister"> Registra el primero desde <b>Registrar</b>.</span></td></tr>

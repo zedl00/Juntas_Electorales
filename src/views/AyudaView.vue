@@ -132,6 +132,16 @@ import { reqLbl } from '../lib/constantes';
       </details>
 
       <details v-if="esAdmin" class="card acc">
+        <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Verificación de miembros con la Secretaría de Organización</summary>
+        <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
+          <p><b>Qué es.</b> La Secretaría de Organización confirma, con su padrón, si cada postulante registrado es miembro del partido. El portal arma <b>lotes</b> de cédulas pendientes (200 por defecto), la Secretaría devuelve cada cédula con su estado, y el portal lo guarda y lo muestra en Postulantes con la columna «Miembro» y su filtro.</p>
+          <p><b>Estados.</b> <b>Miembro</b>, <b>No miembro</b> (existe pero no es miembro), <b>No localizado</b> (no está en su padrón) y <b>En revisión</b> (vuelve a salir en un lote futuro). Antes de eso: «Sin verificar» y «Enviado a Organización». Los estados solo se marcan y se reportan; no bloquean el registro ni la impresión.</p>
+          <p><b>Dos caminos, un circuito.</b> Por <b>API</b>: la Secretaría retira lotes y devuelve resultados con una clave propia que se crea y revoca en Gestión → Verificación de miembros; cada llamada queda en la bitácora. Por <b>archivo</b>: «Generar lote manual» descarga un CSV con las cédulas; la Secretaría completa la columna estado y la administración lo carga con «Cargar respuesta». Cada archivo es un lote igual que una llamada.</p>
+          <p><b>Validaciones.</b> Cédula con dígito verificador correcto, estado permitido, y que la cédula haya salido en un lote. Lo que no cumple se rechaza con su motivo, línea por línea; el resto se carga.</p>
+        </div>
+      </details>
+
+      <details v-if="esAdmin" class="card acc">
         <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Accesos y seguridad: qué es cada bandeja y cuándo se usa</summary>
         <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-3">
           <p class="text-[12px] text-mut">Gestión → Accesos y seguridad. Cuatro bandejas independientes. Cada una aparece con su contador; si está en cero, no hay nada que hacer.</p>
