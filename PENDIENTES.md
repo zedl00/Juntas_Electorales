@@ -42,6 +42,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Hecho
 
+- Control por junta: dos informes PDF separados y presentables: «Informe de impugnaciones» (cifras por nivel, criterio y plazo, tabla por región, lista por nivel y composición completa de cada junta prioritaria o a evaluar) y «Sin identificar» (cifras, origen Desconocido/No está en la base, tabla por región, titulares primero y suplentes aparte, con columna «Partido (completar)»). Verificados con datos simulados (30 sep 2026).
+
 - Control por junta: botón «Sin identificar» con panel de los electos sin partido (titulares, solo presidentes, suplentes, todos), origen «Desconocido» o «No está en la base», y Excel con columna «Partido (a completar)» (30 sep 2026).
 
 - Control por junta: portada del PDF compactada para que la nota de «Sin id.» de dos líneas no se monte sobre los créditos ni el pie (30 sep 2026).
