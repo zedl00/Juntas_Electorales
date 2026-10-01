@@ -42,6 +42,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Hecho
 
+- Control por junta: botón «Sin identificar» con panel de los electos sin partido (titulares, solo presidentes, suplentes, todos), origen «Desconocido» o «No está en la base», y Excel con columna «Partido (a completar)» (30 sep 2026).
+
 - Control por junta: portada del PDF compactada para que la nota de «Sin id.» de dos líneas no se monte sobre los créditos ni el pie (30 sep 2026).
 
 - Control por junta: filas de indicadores rotuladas «POR JUNTAS» y «POR CARGOS» en pantalla y PDF, con la explicación numérica de que los cargos titulares de FP se reparten en N juntas (30 sep 2026).
