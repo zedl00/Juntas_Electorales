@@ -42,6 +42,8 @@ Nota de trabajo: los commits los hace Claude; el `push` lo hace Nestor desde Git
 
 ## Hecho
 
+- Control por junta: indicadores rehechos para que cuadren entre sí y con los gráficos (juntas = con algún titular FP + sin titular FP; preside FP = barra de presidencias; titulares FP = barra de titulares, desglosados en presidentes, 1.º y 2.º vocales; cargos FP = barra de cargos). Explicaciones bajo cifras y tablas; cierre con Comisión de Juntas Electorales, Coordinación Adalgisa Pujols, Análisis de Datos Néstor Valdez. Verificado en PDF con datos simulados (30 sep 2026).
+
 - Análisis Electoral: pestaña «Control por junta» (KPIs de control FP, barras por partido con denominadores reales, resumen por región, tabla junta por junta con semáforo, panel con los cargos, Excel, Informe PDF de lo general a lo particular con firma, Anexo junta por junta). Probada con datos simulados en el navegador; sintaxis verificada (30 sep 2026).
 
 - Cruce Resolución JCE 08-2026 cerrado: fases 83, 83b y 84 aplicadas; 1,409 de 1,476 electos emparejados y marcados en Análisis Electoral con cargo definitivo; cédula guardada en aspirantes; foto de mayo y vistas creadas. Resultado: FP 457 cargos, 188 titulares (1.º), 40 presidencias (PRM 70); presencia en 160 de 162 juntas (30 sep 2026).
