@@ -36,6 +36,7 @@ const tsRender = () => {
   });
 };
 onMounted(async () => {
+  try { const av = sessionStorage.getItem('portal_aviso'); if (av) { loginErr.value = av; sessionStorage.removeItem('portal_aviso'); } } catch (e) { /* sin almacenamiento */ }
   const { data } = await sb.schema('public').rpc('portal_config_publica');
   if (!data?.captcha_activo || !data?.captcha_site_key) return;
   TS_KEY.value = data.captcha_site_key;

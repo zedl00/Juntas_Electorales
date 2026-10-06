@@ -132,6 +132,16 @@ import { reqLbl } from '../lib/constantes';
       </details>
 
       <details v-if="esAdmin" class="card acc">
+        <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Una sola sesión por usuario</summary>
+        <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
+          <p><b>Qué hace.</b> Si alguien ya está conectado con un usuario, otra persona no puede entrar con ese mismo usuario. Quien lo intenta ve: «No puedes acceder: ya hay otra persona conectada con este usuario desde las HH:MM». El intento queda en Actividad como «Intento con sesión abierta», con la IP y el dispositivo del que intentó entrar y los de la sesión que ya estaba abierta.</p>
+          <p><b>Cómo sabe el portal quién está conectado.</b> La app da una señal cada 2 minutos mientras está abierta. Si la última señal tiene menos de 5 minutos (parámetro), el usuario cuenta como conectado. Cerrar sesión con «Salir» libera el usuario al instante; cerrar el navegador sin salir, al pasar esos minutos.</p>
+          <p><b>Qué ve la administración.</b> En Gestión → Usuarios, «● Conectado» con la hora y la IP, el total de conectados ahora, y el botón «⏏ Cerrar sesión», que expulsa a quien esté dentro en menos de 2 minutos con el aviso «Tu sesión fue cerrada por la Comisión». Aplica también a la administración: para pasar de la computadora al teléfono, primero «Salir».</p>
+          <p><b>Para activarlo o desactivarlo.</b> Gestión → Configuración → Seguridad del acceso → casilla «Una sola sesión por usuario» → «Guardar». Ahí mismo se cambian los minutos de inactividad. Desactivado, el portal sigue mostrando quién está conectado y «Cerrar sesión» sigue funcionando, pero ya no niega el acceso a una segunda persona.</p>
+        </div>
+      </details>
+
+      <details v-if="esAdmin" class="card acc">
         <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Verificación de miembros con la Secretaría de Organización</summary>
         <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
           <p><b>Qué es.</b> La Secretaría de Organización confirma, con su padrón, si cada postulante registrado es miembro del partido. El portal arma <b>lotes</b> de cédulas pendientes (200 por defecto), la Secretaría devuelve cada cédula con su estado, y el portal lo guarda y lo muestra en Postulantes con la columna «Miembro» y su filtro.</p>

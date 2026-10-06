@@ -12,7 +12,8 @@ const fQ = ref('');
 const abierto = ref(null);
 
 const accionLbl = {
-  acceso: 'Acceso al portal', consulta_padron: 'Consulta de padrón',
+  acceso: 'Acceso al portal', ingreso: 'Ingreso con PIN', sesion_duplicada: 'Intento con sesión abierta', sesion_cerrada: 'Sesión cerrada por la Comisión',
+  consulta_padron: 'Consulta de padrón',
   registro: 'Registro de postulante', edicion: 'Edición de postulante',
   cambio_estado: 'Cambio de etapa', eliminacion: 'Eliminación de postulante',
   alta_usuario: 'Alta de usuario', edicion_usuario: 'Edición de usuario',
@@ -24,7 +25,8 @@ const accionLbl = {
   baja_usuario: 'Baja de usuario'
 };
 const accionCls = {
-  acceso: 'border-line bg-white text-mut', consulta_padron: 'border-sky-200 bg-sky-50 text-sky-800',
+  acceso: 'border-line bg-white text-mut', ingreso: 'border-line bg-white text-mut', sesion_duplicada: 'border-red-200 bg-red-50 text-red-700', sesion_cerrada: 'border-amber-200 bg-amber-50 text-amber-800',
+  consulta_padron: 'border-sky-200 bg-sky-50 text-sky-800',
   registro: 'border-fp-200 bg-fp-50 text-fp-800', edicion: 'border-line bg-paper text-ink',
   cambio_estado: 'border-fp-600 bg-fp-600 text-white', eliminacion: 'border-red-200 bg-red-50 text-red-700',
   alta_usuario: 'border-fp-200 bg-fp-50 text-fp-800', edicion_usuario: 'border-line bg-paper text-ink',
@@ -48,7 +50,7 @@ onMounted(cargar);
 const visibles = computed(() => eventos.value.filter(e => {
   if (fAccion.value && e.accion !== fAccion.value) return false;
   const q = fQ.value.trim().toLowerCase();
-  if (q && !((e.usuario || '').toLowerCase().includes(q) || (e.entidad_id || '').toLowerCase().includes(q))) return false;
+  if (q && !((e.usuario || '').toLowerCase().includes(q) || (e.entidad_id || '').toLowerCase().includes(q) || String(e.detalle?.ip || '').includes(q) || String(e.detalle?.nombre || '').toLowerCase().includes(q))) return false;
   return true;
 }));
 
@@ -62,6 +64,9 @@ const resumenDe = e => {
   if (e.accion === 'bot_no_autorizado') return 'Identificador no registrado' + (d.comando ? ' · «' + d.comando + '»' : '');
   if (e.accion === 'alta_usuario') return (d.nombre || '') + (d.rol ? ' · ' + d.rol : '');
   if (e.accion === 'registro') return d.numero ? 'Formulario ' + d.numero : '';
+  if (e.accion === 'ingreso') return (d.nombre || '') + (d.ip ? ' · IP ' + d.ip : '');
+  if (e.accion === 'sesion_duplicada') return (d.nombre || '') + ' · intento desde IP ' + (d.ip || '?') + ' · sesión abierta desde ' + (d.sesion_desde ? fechaHora(d.sesion_desde) : '?') + (d.sesion_ip ? ' (IP ' + d.sesion_ip + ')' : '');
+  if (e.accion === 'sesion_cerrada') return (d.nombre || '') + (d.sesion_ip ? ' · IP ' + d.sesion_ip : '');
   return '';
 };
 </script>
@@ -77,7 +82,7 @@ const resumenDe = e => {
     </div>
 
     <div class="card p-3.5 grid grid-cols-2 sm:grid-cols-3 gap-2">
-      <input v-model="fQ" class="inp !py-2 text-[12.5px]" placeholder="Usuario, folio o cédula…">
+      <input v-model="fQ" class="inp !py-2 text-[12.5px]" placeholder="Usuario, folio, cédula o IP…">
       <select v-model="fAccion" class="inp !py-2 text-[12.5px]">
         <option value="">Acción: todas</option>
         <option v-for="(l, k) in accionLbl" :key="k" :value="k">{{ l }}</option>

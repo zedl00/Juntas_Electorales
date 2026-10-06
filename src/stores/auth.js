@@ -67,6 +67,7 @@ export async function postLogin() {
   if (!p.activo) { t('Tu acceso está desactivado. Contacta a la Comisión.', 'err'); await sb.auth.signOut(); sesion.value = null; perfil.value = null; return false; }
   showIdent.value = !!p.verificar_identidad && p.rol !== 'admin_sne';   // primero identidad, después el PIN personal; la administración nunca
   showPin.value = !!p.primer_acceso;
+  iniciarLatido();
   return true;
 }
 
@@ -104,7 +105,40 @@ export async function login(acceso, pin, captchaToken = '') {
 }
 
 export async function logout() {
+  detenerLatido();
+  try { await sb.rpc('portal_salir'); } catch (e) { /* sin conexión: la sesión vence sola */ }
   try { await sb.auth.signOut(); } finally { location.reload(); }
+}
+
+/* ── Sesión única (fase 86): latido cada 2 minutos y al volver a primer plano ──
+   La base responde «cerrada» cuando otra persona entró con el mismo usuario o la Comisión cerró la sesión. */
+const LATIDO_MS = 120000;
+let latidoTimer = null, latidoEnCurso = false;
+async function latido() {
+  if (!sesion.value || latidoEnCurso) return;
+  latidoEnCurso = true;
+  try {
+    const { data, error } = await sb.rpc('portal_latido');
+    if (error || !data) return;                                   // sin conexión o sin respuesta: no se cierra nada
+    if (data.estado === 'cerrada') {
+      detenerLatido();
+      try { sessionStorage.setItem('portal_aviso', data.msg || 'Tu sesión fue cerrada.'); } catch (e) { /* sin almacenamiento */ }
+      t(data.msg || 'Tu sesión fue cerrada.', 'err');
+      try { await sb.auth.signOut(); } finally { setTimeout(() => location.reload(), 1500); }
+    }
+  } finally { latidoEnCurso = false; }
+}
+function latidoVisible() { if (document.visibilityState === 'visible') latido(); }
+function iniciarLatido() {
+  detenerLatido();
+  latido();
+  latidoTimer = setInterval(latido, LATIDO_MS);
+  document.addEventListener('visibilitychange', latidoVisible);
+}
+function detenerLatido() {
+  if (latidoTimer) clearInterval(latidoTimer);
+  latidoTimer = null;
+  document.removeEventListener('visibilitychange', latidoVisible);
 }
 
 /* ── Arranque: restaurar sesión antes de montar el router ── */
@@ -112,7 +146,7 @@ let readyResolve;
 export const authReady = new Promise(r => { readyResolve = r; });
 
 export async function inicializarAuth() {
-  sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') { sesion.value = null; perfil.value = null; } });
+  sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') { detenerLatido(); sesion.value = null; perfil.value = null; } });
   const { data } = await sb.auth.getSession();
   if (data?.session) { sesion.value = data.session; await postLogin(); }
   readyResolve();

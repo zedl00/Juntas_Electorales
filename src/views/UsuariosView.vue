@@ -555,7 +555,7 @@ const cfgTr = ref({ alcance: 'municipio', excede_accion: 'autorizar', encargado_
 const cfgBusy = ref(false);
 
 /* ── Seguridad del acceso: captcha de Cloudflare (fase 60) ── */
-const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, identidad_campos: 'fecha', pin_caduca_horas: 72, confirmar_sne: true, reverificar_al_reset: true });
+const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, identidad_campos: 'fecha', pin_caduca_horas: 72, confirmar_sne: true, reverificar_al_reset: true, sesion_unica: true, sesion_minutos: 5 });
 const segBusy = ref(false);
 const cargarCfgSeg = async () => {
   const { data } = await sb.from('config_seguridad').select('*').limit(1).maybeSingle();
@@ -568,12 +568,24 @@ const guardarCfgSeg = async () => {
     captcha_activo: !!c.captcha_activo, captcha_site_key: c.captcha_site_key || '',
     bloqueo_activo: !!c.bloqueo_activo, intentos_aviso: +c.intentos_aviso || 3, intentos_bloqueo: +c.intentos_bloqueo || 5,
     bloqueo_minutos: +c.bloqueo_minutos || 15, verificar_padron: !!c.verificar_padron, identidad_campos: c.identidad_campos || 'fecha',
-    pin_caduca_horas: +c.pin_caduca_horas || 72, confirmar_sne: !!c.confirmar_sne, reverificar_al_reset: !!c.reverificar_al_reset
+    pin_caduca_horas: +c.pin_caduca_horas || 72, confirmar_sne: !!c.confirmar_sne, reverificar_al_reset: !!c.reverificar_al_reset,
+    sesion_unica: !!c.sesion_unica, sesion_minutos: +c.sesion_minutos || 5
   } });
+  if (!error) { try { await sb.rpc('portal_latido'); } catch (e) { /* solo refresca la presencia */ } }
   segBusy.value = false;
   if (error) { t('No se pudo guardar: ' + error.message, 'err'); cargarCfgSeg(); return; }
   t('Seguridad del acceso guardada', 'ok');
   cargarCfgSeg();
+};
+
+/* ── Sesión única (fase 86): quién está conectado y cerrar sesiones ── */
+const conectado = u => !!u.sesion_vista_en && (Date.now() - new Date(u.sesion_vista_en).getTime()) < (+cfgSeg.value.sesion_minutos || 5) * 60000;
+const conectadoTitulo = u => 'Conectado desde ' + fechaHora(u.sesion_desde || u.sesion_vista_en) + (u.sesion_ip ? ' · IP ' + u.sesion_ip : '') + ' · último latido ' + fechaHora(u.sesion_vista_en);
+const cerrarSesion = async u => {
+  if (!confirm('¿Cerrar la sesión de ' + u.nombre + '?\n\nSu app se despedirá en menos de 2 minutos y podrá volver a entrar con su PIN.')) return;
+  const { error } = await sb.rpc('portal_sesion_cerrar', { p_user: u.id });
+  if (error) { t('No se pudo cerrar: ' + error.message, 'err'); return; }
+  t('Sesión de ' + u.nombre + ' cerrada', 'ok'); cargarUsrs();
 };
 
 /* ── Marca de agua por documento ── */
@@ -742,6 +754,7 @@ const verifTotalVerificados = computed(() => { const r = verif.value.resumen; re
       <span class="chip">Total: {{ usrs.length }}</span>
       <span class="chip">Activos: {{ usrs.filter(u => u.activo).length }}</span>
       <span class="badge border-amber-200 bg-amber-50 text-amber-800">Sin primer acceso: {{ usrs.filter(u => u.primer_acceso).length }}</span>
+      <span class="badge border-fp-600 bg-fp-600 text-white" title="Con actividad en los últimos minutos">● Conectados ahora: {{ usrs.filter(conectado).length }}</span>
       <span class="badge border-line bg-white text-mut">Con acuse de instructivo: {{ usrs.filter(u => u.acuse_instructivo).length }}</span>
     </div>
 
@@ -818,13 +831,18 @@ const verifTotalVerificados = computed(() => { const r = verif.value.resumen; re
                 </template>
                 <span v-else class="text-[11px] text-mut">—</span>
               </td>
-              <td class="td whitespace-nowrap"><span v-if="u.ultimo_acceso" class="text-[12px]">{{ fechaHora(u.ultimo_acceso) }}</span><span v-else class="badge border-amber-200 bg-amber-50 text-amber-800">Nunca</span></td>
+              <td class="td whitespace-nowrap">
+                <span v-if="conectado(u)" class="badge border-fp-600 bg-fp-600 text-white block w-fit mb-0.5" :title="conectadoTitulo(u)">● Conectado</span>
+                <span v-if="u.ultimo_acceso" class="text-[12px]">{{ fechaHora(u.ultimo_acceso) }}</span><span v-else class="badge border-amber-200 bg-amber-50 text-amber-800">Nunca</span>
+                <span v-if="conectado(u) && u.sesion_ip" class="block text-[10.5px] text-mut font-mono">IP {{ u.sesion_ip }}</span>
+              </td>
               <td class="td text-center">
                 <span v-if="u.acuse_instructivo" class="text-[11.5px] font-semibold text-fp-700 whitespace-nowrap">✓ {{ fecha(u.acuse_instructivo) }}</span>
                 <span v-else class="badge border-amber-200 bg-amber-50 text-amber-800">Pendiente</span>
               </td>
               <td class="td"><button class="badge cursor-pointer" :class="u.activo ? 'border-fp-200 bg-fp-50 text-fp-800' : 'border-red-200 bg-red-50 text-red-700'" @click="toggleActivo(u)">{{ u.activo ? 'Activo' : 'Inactivo' }}</button></td>
               <td class="td text-right whitespace-nowrap">
+                <button v-if="conectado(u)" class="btn-o btn-s mr-1 !text-red-700" title="Cierra la sesión abierta; la app de esa persona se despide en menos de 2 minutos" @click="cerrarSesion(u)">⏏ Cerrar sesión</button>
                 <button class="btn-o btn-s mr-1" title="Editar usuario" @click="abrirEdicion(u)">✎ Editar</button>
                 <button v-if="u.rol !== 'admin_sne'" class="btn-p btn-s mr-1 !bg-[#25D366] hover:!bg-[#1ebe5b]" title="Genera un PIN nuevo, lo muestra y lo envía por WhatsApp" @click="resetPin(u)">↺ PIN nuevo</button>
                 <button class="btn-o btn-s mr-1" title="Reenvía solo el enlace, sin PIN" @click="waAcceso(u)">📱 Reenviar</button>
@@ -1490,6 +1508,15 @@ const verifTotalVerificados = computed(() => { const r = verif.value.resumen; re
           <span class="min-w-0">
             <b class="text-[13.5px]">Bloqueo por intentos fallidos</b>
             <span class="block text-[11.5px] text-mut leading-snug mt-0.5">A partir de <input type="number" min="1" max="20" v-model.number="cfgSeg.intentos_aviso" class="inp !inline-block !w-14 !py-0.5 !px-1.5 text-center mx-1" @click.stop> fallos avisa cuántos quedan; al llegar a <input type="number" min="2" max="30" v-model.number="cfgSeg.intentos_bloqueo" class="inp !inline-block !w-14 !py-0.5 !px-1.5 text-center mx-1" @click.stop> bloquea <input type="number" min="1" max="1440" v-model.number="cfgSeg.bloqueo_minutos" class="inp !inline-block !w-16 !py-0.5 !px-1.5 text-center mx-1" @click.stop> minutos. Si vuelve a agotarlos, bloqueo definitivo: solo se habilita desde «Usuarios bloqueados».</span>
+          </span>
+        </label>
+
+        <label class="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer" :class="cfgSeg.sesion_unica ? 'border-fp-400 bg-fp-25' : 'border-line bg-white'">
+          <input type="checkbox" v-model="cfgSeg.sesion_unica" class="accent-fp-600 w-4 h-4 mt-0.5">
+          <span class="min-w-0">
+            <b class="text-[13.5px]">Una sola sesión por usuario</b>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Si alguien ya está conectado con un usuario, otra persona no puede entrar con ese mismo usuario: ve «ya hay otra persona conectada con este usuario desde las HH:MM» y el intento queda en Actividad con su IP y su dispositivo. Un usuario cuenta como conectado si su app dio señal en los últimos <input type="number" min="1" max="120" v-model.number="cfgSeg.sesion_minutos" class="inp !inline-block !w-14 !py-0.5 !px-1.5 text-center mx-1" @click.stop> minutos: cerrar sesión libera al instante; cerrar el navegador sin salir, al pasar esos minutos. En la lista de usuarios se ve quién está conectado y «Cerrar sesión» expulsa a quien esté dentro.</span>
+            <span class="block text-[11.5px] text-mut leading-snug mt-1"><b>Para activarlo o desactivarlo:</b> marca o desmarca esta casilla y pulsa «Guardar». Aplica desde el siguiente intento de entrada, sin tocar a quien ya está dentro.</span>
           </span>
         </label>
 

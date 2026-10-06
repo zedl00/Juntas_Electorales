@@ -54,8 +54,10 @@ Deno.serve(async (req) => {
     if (!r?.success) return json({ ok: false, msg: "La verificación de seguridad falló. Inténtalo de nuevo." }, 400);
   }
 
-  // 2. PIN e intentos, en la base
-  const { data: v, error: ve } = await admin.schema("public").rpc("portal_acceso_verificar", { p_email: email, p_pin: pin });
+  // 2. PIN e intentos, en la base (fase 86: con la IP y el dispositivo, para la sesión única y la bitácora)
+  const ip = (req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || null;
+  const agente = req.headers.get("user-agent") || null;
+  const { data: v, error: ve } = await admin.schema("public").rpc("portal_acceso_verificar", { p_email: email, p_pin: pin, p_ip: ip, p_agente: agente });
   if (ve) return json({ ok: false, msg: "No se pudo verificar el acceso: " + ve.message }, 500);
   if (!v?.ok) return json({ ok: false, msg: v?.msg || "Cédula o PIN incorrectos." }, 401);
 
@@ -65,6 +67,12 @@ Deno.serve(async (req) => {
   const anon = createClient(URL, ANON, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: s, error: se } = await anon.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: "magiclink" });
   if (se || !s?.session) return json({ ok: false, msg: "No se pudo abrir la sesión: " + (se?.message || "") }, 500);
+
+  // 4. Fase 86: la base guarda el identificador de esta sesión; si falla, el primer latido de la app lo adopta
+  try {
+    const claims = JSON.parse(atob(s.session.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (claims?.session_id && v?.user_id) await admin.schema("delegados").rpc("portal_sesion_registrar", { p_user: v.user_id, p_sesion: String(claims.session_id) });
+  } catch (_) { /* no bloquea el acceso */ }
 
   return json({ ok: true, access_token: s.session.access_token, refresh_token: s.session.refresh_token });
 });
