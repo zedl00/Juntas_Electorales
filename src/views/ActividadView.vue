@@ -12,7 +12,7 @@ const fQ = ref('');
 const abierto = ref(null);
 
 const accionLbl = {
-  acceso: 'Acceso al portal', ingreso: 'Ingreso con PIN', sesion_duplicada: 'Intento con sesión abierta', sesion_cerrada: 'Sesión cerrada por la Comisión',
+  acceso: 'Acceso al portal', ingreso: 'Ingreso con PIN', sesion_duplicada: 'Intento con sesión abierta', sesion_cerrada: 'Sesión cerrada por la Comisión', sesion_inactiva: 'Sesión cerrada por inactividad',
   consulta_padron: 'Consulta de padrón',
   registro: 'Registro de postulante', edicion: 'Edición de postulante',
   cambio_estado: 'Cambio de etapa', eliminacion: 'Eliminación de postulante',
@@ -25,7 +25,7 @@ const accionLbl = {
   baja_usuario: 'Baja de usuario'
 };
 const accionCls = {
-  acceso: 'border-line bg-white text-mut', ingreso: 'border-line bg-white text-mut', sesion_duplicada: 'border-red-200 bg-red-50 text-red-700', sesion_cerrada: 'border-amber-200 bg-amber-50 text-amber-800',
+  acceso: 'border-line bg-white text-mut', ingreso: 'border-line bg-white text-mut', sesion_duplicada: 'border-red-200 bg-red-50 text-red-700', sesion_cerrada: 'border-amber-200 bg-amber-50 text-amber-800', sesion_inactiva: 'border-line bg-paper text-ink',
   consulta_padron: 'border-sky-200 bg-sky-50 text-sky-800',
   registro: 'border-fp-200 bg-fp-50 text-fp-800', edicion: 'border-line bg-paper text-ink',
   cambio_estado: 'border-fp-600 bg-fp-600 text-white', eliminacion: 'border-red-200 bg-red-50 text-red-700',
@@ -67,6 +67,7 @@ const resumenDe = e => {
   if (e.accion === 'ingreso') return (d.nombre || '') + (d.ip ? ' · IP ' + d.ip : '');
   if (e.accion === 'sesion_duplicada') return (d.nombre || '') + ' · intento desde IP ' + (d.ip || '?') + ' · sesión abierta desde ' + (d.sesion_desde ? fechaHora(d.sesion_desde) : '?') + (d.sesion_ip ? ' (IP ' + d.sesion_ip + ')' : '');
   if (e.accion === 'sesion_cerrada') return (d.nombre || '') + (d.sesion_ip ? ' · IP ' + d.sesion_ip : '');
+  if (e.accion === 'sesion_inactiva') return (d.nombre || '') + ' · límite ' + (d.limite_min || '?') + ' min' + (d.ultima_senal ? ' · última señal ' + fechaHora(d.ultima_senal) : '');
   return '';
 };
 </script>

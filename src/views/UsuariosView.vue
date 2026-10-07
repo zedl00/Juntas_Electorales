@@ -555,7 +555,7 @@ const cfgTr = ref({ alcance: 'municipio', excede_accion: 'autorizar', encargado_
 const cfgBusy = ref(false);
 
 /* ── Seguridad del acceso: captcha de Cloudflare (fase 60) ── */
-const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, identidad_campos: 'fecha', pin_caduca_horas: 72, confirmar_sne: true, reverificar_al_reset: true, sesion_unica: true, sesion_minutos: 5 });
+const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, identidad_campos: 'fecha', pin_caduca_horas: 72, confirmar_sne: true, reverificar_al_reset: true, sesion_unica: true, sesion_minutos: 5, inactividad_minutos: 30 });
 const segBusy = ref(false);
 const cargarCfgSeg = async () => {
   const { data } = await sb.from('config_seguridad').select('*').limit(1).maybeSingle();
@@ -569,7 +569,7 @@ const guardarCfgSeg = async () => {
     bloqueo_activo: !!c.bloqueo_activo, intentos_aviso: +c.intentos_aviso || 3, intentos_bloqueo: +c.intentos_bloqueo || 5,
     bloqueo_minutos: +c.bloqueo_minutos || 15, verificar_padron: !!c.verificar_padron, identidad_campos: c.identidad_campos || 'fecha',
     pin_caduca_horas: +c.pin_caduca_horas || 72, confirmar_sne: !!c.confirmar_sne, reverificar_al_reset: !!c.reverificar_al_reset,
-    sesion_unica: !!c.sesion_unica, sesion_minutos: +c.sesion_minutos || 5
+    sesion_unica: !!c.sesion_unica, sesion_minutos: +c.sesion_minutos || 5, inactividad_minutos: Math.max(0, +c.inactividad_minutos || 0)
   } });
   if (!error) { try { await sb.rpc('portal_latido'); } catch (e) { /* solo refresca la presencia */ } }
   segBusy.value = false;
@@ -1517,6 +1517,14 @@ const verifTotalVerificados = computed(() => { const r = verif.value.resumen; re
             <b class="text-[13.5px]">Una sola sesión por usuario</b>
             <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Si alguien ya está conectado con un usuario, otra persona no puede entrar con ese mismo usuario: ve «ya hay otra persona conectada con este usuario desde las HH:MM» y el intento queda en Actividad con su IP y su dispositivo. Un usuario cuenta como conectado si su app dio señal en los últimos <input type="number" min="1" max="120" v-model.number="cfgSeg.sesion_minutos" class="inp !inline-block !w-14 !py-0.5 !px-1.5 text-center mx-1" @click.stop> minutos: cerrar sesión libera al instante; cerrar el navegador sin salir, al pasar esos minutos. En la lista de usuarios se ve quién está conectado y «Cerrar sesión» expulsa a quien esté dentro.</span>
             <span class="block text-[11.5px] text-mut leading-snug mt-1"><b>Para activarlo o desactivarlo:</b> marca o desmarca esta casilla y pulsa «Guardar». Aplica desde el siguiente intento de entrada, sin tocar a quien ya está dentro.</span>
+          </span>
+        </label>
+
+        <label class="flex items-start gap-2.5 rounded-xl border p-3" :class="cfgSeg.inactividad_minutos > 0 ? 'border-fp-400 bg-fp-25' : 'border-line bg-white'">
+          <span class="w-4 h-4 mt-0.5 shrink-0 text-fp-700 text-center leading-4">⏻</span>
+          <span class="min-w-0">
+            <b class="text-[13.5px]">Cerrar la sesión tras <input type="number" min="0" max="1440" v-model.number="cfgSeg.inactividad_minutos" class="inp !inline-block !w-16 !py-0.5 !px-1.5 text-center mx-1"> minutos sin uso</b>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Si la persona no toca, escribe ni se desplaza durante ese tiempo, la app cierra la sesión y vuelve a pedir el PIN, con el aviso «Tu sesión se cerró por inactividad». Vale también si la pestaña quedó abierta durante días o la computadora estuvo cerrada: al volver, no entra sin PIN. El intento queda en Actividad como «Sesión cerrada por inactividad». Poner <b>0</b> lo desactiva.</span>
           </span>
         </label>
 

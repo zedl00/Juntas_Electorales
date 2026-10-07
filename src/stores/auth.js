@@ -62,6 +62,9 @@ async function cargarPerfil() {
 
 /** Carga el perfil tras autenticar. Devuelve true si el acceso es válido. */
 export async function postLogin() {
+  /* Fase 88: antes de mostrar nada, si la última actividad guardada supera el límite, la sesión se cierra aquí mismo */
+  await cargarLimiteInactividad();
+  if (inactividadMin > 0 && minutosInactivo() >= inactividadMin) { await cerrarPorInactividad(); return false; }
   const [p] = await Promise.all([cargarPerfil(), cargarPermisos()]);   // en paralelo: ahorra un viaje al servidor
   if (!p) { t('Tu cuenta no tiene perfil en el Portal de Delegados. Contacta a la Comisión.', 'err'); await sb.auth.signOut(); sesion.value = null; return false; }
   if (!p.activo) { t('Tu acceso está desactivado. Contacta a la Comisión.', 'err'); await sb.auth.signOut(); sesion.value = null; perfil.value = null; return false; }
@@ -99,6 +102,7 @@ export async function login(acceso, pin, captchaToken = '') {
   }
   const { data, error } = await sb.auth.setSession({ access_token: r.access_token, refresh_token: r.refresh_token });
   if (error || !data?.session) return 'No se pudo abrir la sesión: ' + (error?.message || '');
+  marcarActividad();                                   // entrar cuenta como actividad
   sesion.value = data.session;
   const ok = await postLogin();
   return ok ? null : 'Acceso no habilitado.';
@@ -110,6 +114,45 @@ export async function logout() {
   try { await sb.auth.signOut(); } finally { location.reload(); }
 }
 
+/* ── Cierre por inactividad (fase 88) ──
+   La última actividad se guarda en el navegador para que sobreviva a recargas y a días con la pestaña abierta.
+   La app se cierra sola al superar el límite (aunque no haya conexión); la base lo confirma en cada latido. */
+const ACT_KEY = 'portal_act';
+let inactividadMin = 0, actTimer = null;
+let ultimaActividadMem = Date.now();
+function marcarActividad() {
+  ultimaActividadMem = Date.now();
+  try { localStorage.setItem(ACT_KEY, String(ultimaActividadMem)); } catch (e) { /* sin almacenamiento */ }
+}
+function minutosInactivo() {
+  let t = ultimaActividadMem;
+  try { const g = parseInt(localStorage.getItem(ACT_KEY) || '', 10); if (Number.isFinite(g)) t = Math.min(t, g); } catch (e) { /* sin almacenamiento */ }
+  return (Date.now() - t) / 60000;
+}
+async function cargarLimiteInactividad() {
+  try { const { data } = await sb.rpc('portal_config_publica'); inactividadMin = Math.max(0, +(data?.inactividad_minutos ?? 0) || 0); } catch (e) { /* conserva el valor anterior */ }
+}
+async function cerrarPorInactividad() {
+  detenerLatido();
+  const msg = 'Tu sesión se cerró por inactividad: más de ' + inactividadMin + ' minutos sin usar el portal. Vuelve a entrar con tu PIN.';
+  try { sessionStorage.setItem('portal_aviso', msg); } catch (e) { /* sin almacenamiento */ }
+  try { await sb.rpc('portal_salir'); } catch (e) { /* sin conexión */ }
+  try { await sb.auth.signOut(); } finally { location.reload(); }
+}
+const EVENTOS_ACT = ['pointerdown', 'keydown', 'scroll', 'touchstart'];
+let actThrottle = 0;
+function alActuar() { const n = Date.now(); if (n - actThrottle > 5000) { actThrottle = n; marcarActividad(); } }
+function vigilarInactividad() {
+  dejarDeVigilar();
+  EVENTOS_ACT.forEach(ev => document.addEventListener(ev, alActuar, { passive: true }));
+  actTimer = setInterval(() => { if (sesion.value && inactividadMin > 0 && minutosInactivo() >= inactividadMin) cerrarPorInactividad(); }, 30000);
+}
+function dejarDeVigilar() {
+  EVENTOS_ACT.forEach(ev => document.removeEventListener(ev, alActuar));
+  if (actTimer) clearInterval(actTimer);
+  actTimer = null;
+}
+
 /* ── Sesión única (fase 86): latido cada 2 minutos y al volver a primer plano ──
    La base responde «cerrada» cuando otra persona entró con el mismo usuario o la Comisión cerró la sesión. */
 const LATIDO_MS = 120000;
@@ -118,24 +161,31 @@ async function latido() {
   if (!sesion.value || latidoEnCurso) return;
   latidoEnCurso = true;
   try {
-    const { data, error } = await sb.rpc('portal_latido');
+    const { data, error } = await sb.rpc('portal_latido', { p_inactivo_min: Math.floor(minutosInactivo()) });
     if (error || !data) return;                                   // sin conexión o sin respuesta: no se cierra nada
     if (data.estado === 'cerrada') {
       detenerLatido();
+      if (data.motivo === 'inactividad') { try { localStorage.removeItem(ACT_KEY); } catch (e) { /* sin almacenamiento */ } }
       try { sessionStorage.setItem('portal_aviso', data.msg || 'Tu sesión fue cerrada.'); } catch (e) { /* sin almacenamiento */ }
       t(data.msg || 'Tu sesión fue cerrada.', 'err');
       try { await sb.auth.signOut(); } finally { setTimeout(() => location.reload(), 1500); }
     }
   } finally { latidoEnCurso = false; }
 }
-function latidoVisible() { if (document.visibilityState === 'visible') latido(); }
+function latidoVisible() {
+  if (document.visibilityState !== 'visible') return;
+  if (sesion.value && inactividadMin > 0 && minutosInactivo() >= inactividadMin) { cerrarPorInactividad(); return; }   // volver a la pestaña no cuenta como actividad
+  latido();
+}
 function iniciarLatido() {
   detenerLatido();
+  vigilarInactividad();
   latido();
   latidoTimer = setInterval(latido, LATIDO_MS);
   document.addEventListener('visibilitychange', latidoVisible);
 }
 function detenerLatido() {
+  dejarDeVigilar();
   if (latidoTimer) clearInterval(latidoTimer);
   latidoTimer = null;
   document.removeEventListener('visibilitychange', latidoVisible);

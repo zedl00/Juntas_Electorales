@@ -31,6 +31,14 @@ Todo PIN inicial nace con fecha de vencimiento (72 horas por defecto). Si se int
 
 Cada primer ingreso queda registrado con fecha, hora y dispositivo, y aparece en Gestión → Usuarios → «Primeros ingresos por confirmar». La administración llama a la persona y confirma o desactiva. Hasta la confirmación, la persona consulta pero **no puede registrar**; lo ve en un aviso amarillo bajo la barra superior.
 
+## Capa E · Una sola sesión por usuario (fase 86, 6 de octubre de 2026)
+
+Si alguien ya está conectado con un usuario, otra persona no puede entrar con ese mismo usuario: ve «ya hay otra persona conectada con este usuario desde las HH:MM» y el intento queda en Actividad como «Intento con sesión abierta», con la IP y el dispositivo de quien intentó entrar y los de la sesión abierta. La app da una señal cada 2 minutos; conectado es quien dio señal en los últimos 5 minutos (parámetro). En Gestión → Usuarios se ve «● Conectado» con IP y hay «⏏ Cerrar sesión». Casilla «Una sola sesión por usuario»; aplica también a la administración.
+
+## Capa F · Cierre por inactividad (fase 88, 7 de octubre de 2026)
+
+Si la persona pasa más de N minutos (30 por defecto) sin tocar, escribir ni desplazarse, la app cierra la sesión y vuelve a pedir el PIN con el aviso «Tu sesión se cerró por inactividad». Dos capas: la app se cierra sola, aunque esté sin conexión, y la base, en cada señal, compara la última señal recibida con el límite, así que una computadora que se abre tres días después no entra sin PIN. Volver a la pestaña no cuenta como actividad. Queda en Actividad como «Sesión cerrada por inactividad». Parámetro «Cerrar la sesión tras N minutos sin uso»; 0 lo desactiva.
+
 ## Si alguien olvidó su PIN
 
 En la pantalla de acceso, «¿Olvidaste tu PIN?» → cédula → Solicitar. La solicitud cae en Gestión → Usuarios → «Solicitudes de PIN pendientes». La administración pulsa «Restablecer y enviar», se genera un PIN nuevo con su plazo, y se envía por WhatsApp. La respuesta en pantalla es la misma exista o no la cuenta, para no revelar quién es usuario, y solo se admite una solicitud pendiente por cédula.
