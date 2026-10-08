@@ -132,6 +132,16 @@ import { reqLbl } from '../lib/constantes';
       </details>
 
       <details v-if="esAdmin" class="card acc">
+        <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Alertas de seguridad y modo de emergencia</summary>
+        <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
+          <p><b>Alertas</b> (Gestión → Accesos, arriba). Resume lo que merece una mirada en las últimas 24 horas, 3 días o una semana: conexiones con muchos fallos de PIN, usuarios que entraron desde varias conexiones (señal de usuario compartido), intentos de entrar con un usuario ya conectado, accesos desde fuera del país, accesos de madrugada, consultas de padrón excesivas, bloqueos, y quién exportó o imprimió datos. Cada línea dice de qué conexión viene y cuándo. Para el detalle completo está Actividad, donde se puede buscar por IP.</p>
+          <p><b>Límite por conexión.</b> Una misma conexión que acumule 20 fallos de PIN en 15 minutos (con cualquier cédula) queda fuera el resto de la ventana. Así nadie puede bloquear usuarios ajenos probando PIN ni adivinar PIN en masa. El bloqueo definitivo de un usuario llega al tercer agotamiento de intentos; antes, los bloqueos temporales duran 15, 30 y 60 minutos.</p>
+          <p><b>Modo de emergencia.</b> El botón «Cerrar el portal (emergencia)» deja entrar solo a la administración, expulsa las sesiones abiertas en menos de 2 minutos y niega cualquier entrada hasta pulsar «Volver a abrir». Los datos no se tocan. Úselo si sospecha de un usuario compartido o de una filtración mientras se investiga en Actividad.</p>
+          <p><b>Exportaciones.</b> Toda descarga de CSV y toda impresión quedan en Actividad con quién, qué y cuántos registros, igual que ya se marcan con nombre y hora los documentos impresos.</p>
+        </div>
+      </details>
+
+      <details v-if="esAdmin" class="card acc">
         <summary class="p-4 flex items-center gap-2 font-serif font-bold text-[15px]"><span class="acc-ic text-fp-600">▸</span> Una sola sesión por usuario</summary>
         <div class="px-4 pb-4 text-[13px] leading-relaxed space-y-2">
           <p><b>Qué hace.</b> Si alguien ya está conectado con un usuario, otra persona no puede entrar con ese mismo usuario. Quien lo intenta ve: «No puedes acceder: ya hay otra persona conectada con este usuario desde las HH:MM». El intento queda en Actividad como «Intento con sesión abierta», con la IP y el dispositivo del que intentó entrar y los de la sesión que ya estaba abierta.</p>

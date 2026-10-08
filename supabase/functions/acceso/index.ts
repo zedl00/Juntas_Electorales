@@ -57,7 +57,8 @@ Deno.serve(async (req) => {
   // 2. PIN e intentos, en la base (fase 86: con la IP y el dispositivo, para la sesión única y la bitácora)
   const ip = (req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || null;
   const agente = req.headers.get("user-agent") || null;
-  const { data: v, error: ve } = await admin.schema("public").rpc("portal_acceso_verificar", { p_email: email, p_pin: pin, p_ip: ip, p_agente: agente });
+  const pais = req.headers.get("cf-ipcountry") || null;   // fase 90: país de origen (lo pone la red de Supabase/Cloudflare)
+  const { data: v, error: ve } = await admin.schema("public").rpc("portal_acceso_verificar", { p_email: email, p_pin: pin, p_ip: ip, p_agente: agente, p_pais: pais });
   if (ve) return json({ ok: false, msg: "No se pudo verificar el acceso: " + ve.message }, 500);
   if (!v?.ok) return json({ ok: false, msg: v?.msg || "Cédula o PIN incorrectos." }, 401);
 

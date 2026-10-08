@@ -114,6 +114,8 @@ const exportCSV = async () => {
   const all = await fetchTodo();
   csvBusy.value = false;
   if (!all) return;
+  const filtros = Object.entries(f).filter(([, v]) => v !== '' && v !== 0 && v != null).map(([k, v]) => k + '=' + v).join(' ');
+  await sb.rpc('portal_log_exportacion', { p_tipo: 'postulantes_csv', p_registros: all.length, p_detalle: filtros || 'sin filtros' });
   const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
   const head = ['Folio','Cédula','Nombres','Apellidos','Sexo','F. Nacimiento','Teléfono','WhatsApp','Correo','Dirección','Nivel','Ocupación','Vínculo FP','Cargo','Colegio','Recinto','Circunscripción','Municipio','Región','Exp. 2024','Etapa','Miembro','Notas','Registrado'];
   const lines = all.map(r => [

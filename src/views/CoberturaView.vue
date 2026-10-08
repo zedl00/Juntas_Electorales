@@ -57,6 +57,7 @@ const res = computed(() => {
 const limpiar = () => { f.value = { q: '', nivel: '', prov: '', estado: '' }; };
 
 const exportar = () => {
+  sb.rpc('portal_log_exportacion', { p_tipo: 'cobertura_dirigencia_csv', p_registros: vista.value.length }).then(() => {}, () => {});
   const h = ['Nivel','Provincia','Territorio','Presidente','Secretario General','Encargado Electoral','Cargos'];
   const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const csv = [h.map(esc).join(',')]

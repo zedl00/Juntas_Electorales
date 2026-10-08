@@ -22,7 +22,11 @@ const accionLbl = {
   consulta_bot: 'Consulta por asistente',
   impresion: 'Documento impreso',
   bot_no_autorizado: 'Intento no autorizado',
-  baja_usuario: 'Baja de usuario'
+  baja_usuario: 'Baja de usuario',
+  exportacion: 'Exportación de datos', impresion_denegada: 'Impresión denegada', acceso_ip_bloqueada: 'Conexión bloqueada por intentos',
+  bloqueo_temporal: 'Bloqueo temporal', bloqueo_definitivo: 'Bloqueo definitivo', pin_vencido: 'PIN inicial vencido', solicitud_pin: 'Solicitud de PIN',
+  modo_emergencia: 'Modo de emergencia', config_seguridad: 'Configuración de seguridad', verif_lote: 'Lote de verificación', verif_resultados: 'Resultados de verificación',
+  api_cliente_alta: 'Clave de API creada', api_cliente_revocado: 'Clave de API revocada'
 };
 const accionCls = {
   acceso: 'border-line bg-white text-mut', ingreso: 'border-line bg-white text-mut', sesion_duplicada: 'border-red-200 bg-red-50 text-red-700', sesion_cerrada: 'border-amber-200 bg-amber-50 text-amber-800', sesion_inactiva: 'border-line bg-paper text-ink', gancho_error: 'border-red-200 bg-red-50 text-red-700',
@@ -35,7 +39,11 @@ const accionCls = {
   consulta_bot: 'border-sky-200 bg-sky-50 text-sky-800',
   impresion: 'border-line bg-paper text-ink/70',
   bot_no_autorizado: 'border-red-200 bg-red-50 text-red-700',
-  baja_usuario: 'border-red-200 bg-red-50 text-red-700'
+  baja_usuario: 'border-red-200 bg-red-50 text-red-700',
+  exportacion: 'border-amber-200 bg-amber-50 text-amber-800', impresion_denegada: 'border-red-200 bg-red-50 text-red-700', acceso_ip_bloqueada: 'border-red-200 bg-red-50 text-red-700',
+  bloqueo_temporal: 'border-amber-200 bg-amber-50 text-amber-800', bloqueo_definitivo: 'border-red-200 bg-red-50 text-red-700', pin_vencido: 'border-amber-200 bg-amber-50 text-amber-800', solicitud_pin: 'border-line bg-paper text-ink',
+  modo_emergencia: 'border-red-600 bg-red-600 text-white', config_seguridad: 'border-line bg-paper text-ink', verif_lote: 'border-sky-200 bg-sky-50 text-sky-800', verif_resultados: 'border-sky-200 bg-sky-50 text-sky-800',
+  api_cliente_alta: 'border-sky-200 bg-sky-50 text-sky-800', api_cliente_revocado: 'border-amber-200 bg-amber-50 text-amber-800'
 };
 
 const cargar = async () => {
@@ -64,7 +72,11 @@ const resumenDe = e => {
   if (e.accion === 'bot_no_autorizado') return 'Identificador no registrado' + (d.comando ? ' · «' + d.comando + '»' : '');
   if (e.accion === 'alta_usuario') return (d.nombre || '') + (d.rol ? ' · ' + d.rol : '');
   if (e.accion === 'registro') return d.numero ? 'Formulario ' + d.numero : '';
-  if (e.accion === 'ingreso') return (d.nombre || '') + (d.ip ? ' · IP ' + d.ip : '');
+  if (e.accion === 'ingreso') return (d.nombre || '') + (d.ip ? ' · IP ' + d.ip : '') + (d.pais ? ' · ' + d.pais : '');
+  if (e.accion === 'exportacion') return (d.tipo || '') + (d.registros != null ? ' · ' + d.registros + ' registros' : '') + (d.detalle ? ' · ' + d.detalle : '');
+  if (e.accion === 'acceso_ip_bloqueada') return 'IP ' + (d.ip || e.entidad_id || '?') + (d.pais ? ' ' + d.pais : '') + ' · ' + (d.fallos || '?') + ' fallos en ' + (d.ventana_min || '?') + ' min';
+  if (e.accion === 'modo_emergencia') return (d.modo === 'solo_admin' ? 'PORTAL CERRADO' : 'portal abierto') + ' · sesiones expulsadas ' + (d.sesiones_cerradas ?? 0) + ' · ' + (d.por || '');
+  if (e.accion === 'bloqueo_temporal' || e.accion === 'bloqueo_definitivo') return (d.nombre || '') + (d.minutos ? ' · ' + d.minutos + ' min' : '') + (d.ip ? ' · IP ' + d.ip : '');
   if (e.accion === 'sesion_duplicada') return (d.nombre || '') + ' · intento desde IP ' + (d.ip || '?') + ' · sesión abierta desde ' + (d.sesion_desde ? fechaHora(d.sesion_desde) : '?') + (d.sesion_ip ? ' (IP ' + d.sesion_ip + ')' : '');
   if (e.accion === 'sesion_cerrada') return (d.nombre || '') + (d.sesion_ip ? ' · IP ' + d.sesion_ip : '');
   if (e.accion === 'sesion_inactiva') return (d.nombre || '') + ' · límite ' + (d.limite_min || '?') + ' min' + (d.ultima_senal ? ' · última señal ' + fechaHora(d.ultima_senal) : '');

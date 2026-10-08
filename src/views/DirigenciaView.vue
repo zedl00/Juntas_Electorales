@@ -99,6 +99,7 @@ const rolTxt = { presidente: 'Presidente(a)', secretario_general: 'Secretario(a)
 const fmtCedula = c => { const d = String(c||'').replace(/\D/g,''); return d.length === 11 ? `${d.slice(0,3)}-${d.slice(3,10)}-${d.slice(10)}` : c; };
 
 const exportarAcc = () => {
+  sb.rpc('portal_log_exportacion', { p_tipo: 'accesos_dirigencia_csv', p_registros: detalleF.value.length, p_detalle: String(caso.value || '') }).then(() => {}, () => {});
   const h = ['Cédula','Nombre','Cargo','Territorio','Teléfono','Situación'];
   const esc = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
   const csv = [h.map(esc).join(',')].concat(detalleF.value.map(r =>

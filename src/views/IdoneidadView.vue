@@ -73,6 +73,7 @@ const muns = computed(() => [...catMap.value.values()]
 const provs = computed(() => provsOf(f.value.region || ''));
 
 const exportar = () => {
+  sb.rpc('portal_log_exportacion', { p_tipo: 'idoneidad_csv', p_registros: vista.value.length }).then(() => {}, () => {});
   const h = ['Formulario','Cédula','Nombre','Cargo','Ámbito','Región','Provincia','Municipio','Distrito','Puntos','Máximo','%','Requisitos','Experiencia','Firmado','Colegio'];
   const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const csv = [h.map(esc).join(',')].concat(vista.value.map(r =>

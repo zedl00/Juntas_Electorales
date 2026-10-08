@@ -555,7 +555,7 @@ const cfgTr = ref({ alcance: 'municipio', excede_accion: 'autorizar', encargado_
 const cfgBusy = ref(false);
 
 /* ── Seguridad del acceso: captcha de Cloudflare (fase 60) ── */
-const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, identidad_campos: 'fecha', pin_caduca_horas: 72, confirmar_sne: true, reverificar_al_reset: true, sesion_unica: true, sesion_minutos: 5, inactividad_minutos: 30, version_minima: '' });
+const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, identidad_campos: 'fecha', pin_caduca_horas: 72, confirmar_sne: true, reverificar_al_reset: true, sesion_unica: true, sesion_minutos: 5, inactividad_minutos: 30, version_minima: '', ip_max_fallos: 20, ip_ventana_min: 15, bloqueos_para_definitivo: 3, modo_emergencia: 'normal' });
 const segBusy = ref(false);
 const cargarCfgSeg = async () => {
   const { data } = await sb.from('config_seguridad').select('*').limit(1).maybeSingle();
@@ -569,13 +569,36 @@ const guardarCfgSeg = async () => {
     bloqueo_activo: !!c.bloqueo_activo, intentos_aviso: +c.intentos_aviso || 3, intentos_bloqueo: +c.intentos_bloqueo || 5,
     bloqueo_minutos: +c.bloqueo_minutos || 15, verificar_padron: !!c.verificar_padron, identidad_campos: c.identidad_campos || 'fecha',
     pin_caduca_horas: +c.pin_caduca_horas || 72, confirmar_sne: !!c.confirmar_sne, reverificar_al_reset: !!c.reverificar_al_reset,
-    sesion_unica: !!c.sesion_unica, sesion_minutos: +c.sesion_minutos || 5, inactividad_minutos: Math.max(0, +c.inactividad_minutos || 0), version_minima: (c.version_minima || '').trim()
+    sesion_unica: !!c.sesion_unica, sesion_minutos: +c.sesion_minutos || 5, inactividad_minutos: Math.max(0, +c.inactividad_minutos || 0), version_minima: (c.version_minima || '').trim(),
+    ip_max_fallos: Math.max(0, +c.ip_max_fallos || 0), ip_ventana_min: +c.ip_ventana_min || 15, bloqueos_para_definitivo: +c.bloqueos_para_definitivo || 3
   } });
   if (!error) { try { await sb.rpc('portal_latido'); } catch (e) { /* solo refresca la presencia */ } }
   segBusy.value = false;
   if (error) { t('No se pudo guardar: ' + error.message, 'err'); cargarCfgSeg(); return; }
   t('Seguridad del acceso guardada', 'ok');
   cargarCfgSeg();
+};
+
+/* ── Alertas de seguridad y modo de emergencia (fase 90) ── */
+const alertas = ref(null), alertasBusy = ref(false), alertasHoras = ref(24);
+const cargarAlertas = async () => {
+  alertasBusy.value = true;
+  const { data, error } = await sb.rpc('portal_alertas', { p_horas: +alertasHoras.value || 24 });
+  alertasBusy.value = false;
+  if (error) { t('Alertas: ' + error.message, 'err'); return; }
+  alertas.value = data;
+};
+const alertasTotal = computed(() => { const a = alertas.value; if (!a) return 0;
+  return (a.ips_sospechosas?.length || 0) + (a.usuarios_varias_ip?.length || 0) + (a.sesiones_duplicadas?.length || 0) + (a.consultas_excesivas?.length || 0) + (a.madrugada?.length || 0) + (a.fuera_pais?.length || 0) + (a.bloqueos?.length || 0); });
+const cambiarModo = async modo => {
+  const msg = modo === 'solo_admin'
+    ? '¿CERRAR EL PORTAL a todos menos a la administración?\n\nLas sesiones abiertas se expulsan en menos de 2 minutos y nadie podrá entrar hasta que lo vuelva a abrir. Úselo ante un incidente.'
+    : '¿Volver a abrir el portal para todos los usuarios?';
+  if (!confirm(msg)) return;
+  const { data, error } = await sb.rpc('portal_modo_emergencia', { p_modo: modo });
+  if (error) { t('No se pudo cambiar: ' + error.message, 'err'); return; }
+  t(modo === 'solo_admin' ? 'Portal cerrado. Sesiones expulsadas: ' + (data?.sesiones_cerradas || 0) : 'Portal abierto para todos', modo === 'solo_admin' ? 'err' : 'ok');
+  cargarCfgSeg(); cargarAlertas();
 };
 
 /* ── Sesión única (fase 86): quién está conectado y cerrar sesiones ── */
@@ -651,7 +674,7 @@ const guardarPermRol = async (r, campo, valor) => {
   t('Permiso actualizado', 'ok');
 };
 
-onMounted(() => { cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol(); cargarUsrs(); cargarSolis(); cargarWa(); cargarTg(); if (tab.value === 'verificacion') cargarVerif(); });
+onMounted(() => { cargarAlertas(); cargarBandejas(); cargarKpiU(); cargarCfgDoc(); cargarCfgTr(); cargarCfgSeg(); cargarPermRol(); cargarUsrs(); cargarSolis(); cargarWa(); cargarTg(); if (tab.value === 'verificacion') cargarVerif(); });
 watch(tab, v => { if (v === 'verificacion' && !verif.value.cargado) cargarVerif(); });
 
 /* ── Verificación de membresía con la Secretaría de Organización (fase 85) ── */
@@ -1084,6 +1107,65 @@ const verifTotalVerificados = computed(() => { const r = verif.value.resumen; re
       </div>
     </div>
     <template v-if="tab === 'accesos'">
+    <!-- Modo de emergencia -->
+    <div class="card p-4 flex flex-wrap items-center gap-3" :class="cfgSeg.modo_emergencia === 'solo_admin' ? 'border-red-400 bg-red-50' : ''">
+      <div class="mr-auto min-w-0">
+        <div class="font-serif font-bold text-[15px]">{{ cfgSeg.modo_emergencia === 'solo_admin' ? '⛔ PORTAL CERRADO: solo entra la administración' : 'Portal abierto a todos los usuarios' }}</div>
+        <div class="text-[11.5px] text-mut leading-snug mt-0.5 max-w-[90ch]">Interruptor para incidentes: cierra el portal a todos menos a la administración, expulsa las sesiones abiertas en menos de 2 minutos y bloquea cualquier entrada hasta que se vuelva a abrir. Queda en Actividad con quién lo hizo. Los datos no se tocan.</div>
+      </div>
+      <button v-if="cfgSeg.modo_emergencia !== 'solo_admin'" class="btn-o btn-s !border-red-300 !text-red-700" @click="cambiarModo('solo_admin')">⛔ Cerrar el portal (emergencia)</button>
+      <button v-else class="btn-p btn-s" @click="cambiarModo('normal')">Volver a abrir el portal</button>
+    </div>
+
+    <!-- Alertas de seguridad -->
+    <div class="card overflow-hidden" :class="alertasTotal ? 'border-amber-300' : ''">
+      <div class="p-4 border-b border-line flex items-center gap-2 flex-wrap">
+        <h3 class="font-serif font-bold text-[15px] mr-auto">Alertas de seguridad</h3>
+        <select v-model.number="alertasHoras" class="inp !py-1 !w-auto text-[12px]" @change="cargarAlertas"><option :value="24">Últimas 24 h</option><option :value="72">Últimos 3 días</option><option :value="168">Última semana</option></select>
+        <span class="badge" :class="alertasTotal ? 'border-amber-300 bg-amber-100 text-amber-900' : 'border-fp-200 bg-fp-50 text-fp-800'">{{ alertasTotal ? alertasTotal + ' señales' : 'Sin señales' }}</span>
+        <button class="btn-o btn-s" :disabled="alertasBusy" @click="cargarAlertas">{{ alertasBusy ? 'Cargando…' : 'Actualizar' }}</button>
+      </div>
+      <div v-if="alertas" class="p-4 space-y-4 text-[12.5px]">
+        <div class="flex flex-wrap gap-2 text-[11.5px]">
+          <span class="chip">Intentos de acceso: <b>{{ fmt(alertas.intentos?.total || 0) }}</b> · correctos {{ fmt(alertas.intentos?.exitosos || 0) }} · fallidos <b class="text-red-700">{{ fmt(alertas.intentos?.fallidos || 0) }}</b> · {{ alertas.intentos?.ips || 0 }} conexiones · {{ alertas.intentos?.cedulas || 0 }} cédulas</span>
+          <span v-for="p in (alertas.paises || [])" :key="p.pais" class="chip" :class="p.pais !== 'DO' && p.pais !== '?' ? '!border-amber-300 !bg-amber-50' : ''">{{ p.pais }}: {{ p.intentos }} <span class="text-mut">({{ p.exitosos }} ok)</span></span>
+        </div>
+        <div v-if="alertas.ips_sospechosas?.length">
+          <div class="font-semibold mb-1">Conexiones con muchos fallos <span class="text-mut font-normal">· posible fuerza bruta o intento de bloquear usuarios</span></div>
+          <div v-for="x in alertas.ips_sospechosas" :key="x.ip" class="flex flex-wrap gap-x-3 border-b border-line/60 py-1"><b class="font-mono">{{ x.ip }}</b><span>{{ x.pais || '?' }}</span><span class="text-red-700">{{ x.fallos }} fallos</span><span>{{ x.cedulas }} cédula(s) distintas</span><span v-if="x.bloqueada" class="badge border-red-200 bg-red-50 text-red-700">bloqueada</span><span class="text-mut">{{ fechaHora(x.ultimo) }}</span></div>
+        </div>
+        <div v-if="alertas.usuarios_varias_ip?.length">
+          <div class="font-semibold mb-1">Usuarios que entraron desde varias conexiones <span class="text-mut font-normal">· puede ser un usuario compartido</span></div>
+          <div v-for="x in alertas.usuarios_varias_ip" :key="x.cedula" class="flex flex-wrap gap-x-3 border-b border-line/60 py-1"><b>{{ x.nombre }}</b><span class="text-mut">{{ x.rol }}</span><span>{{ x.ips }} conexiones:</span><span class="font-mono text-[11.5px]">{{ x.lista }}</span></div>
+        </div>
+        <div v-if="alertas.sesiones_duplicadas?.length">
+          <div class="font-semibold mb-1">Intentos de entrar con un usuario ya conectado</div>
+          <div v-for="(x, i) in alertas.sesiones_duplicadas" :key="i" class="flex flex-wrap gap-x-3 border-b border-line/60 py-1"><b>{{ x.nombre }}</b><span>desde <span class="font-mono">{{ x.ip || '?' }}</span> {{ x.pais || '' }}</span><span class="text-mut">sesión abierta en {{ x.sesion_ip || '?' }}</span><span class="text-mut">{{ fechaHora(x.created_at) }}</span></div>
+        </div>
+        <div v-if="alertas.fuera_pais?.length">
+          <div class="font-semibold mb-1">Accesos desde fuera del país</div>
+          <div v-for="(x, i) in alertas.fuera_pais" :key="i" class="flex flex-wrap gap-x-3 border-b border-line/60 py-1"><b>{{ x.nombre }}</b><span class="text-mut">{{ x.rol }}</span><span class="font-mono">{{ x.ip }}</span><span class="badge border-amber-200 bg-amber-50 text-amber-800">{{ x.pais }}</span><span class="text-mut">{{ fechaHora(x.created_at) }}</span></div>
+        </div>
+        <div v-if="alertas.madrugada?.length">
+          <div class="font-semibold mb-1">Accesos de madrugada (0 a 5 a. m.)</div>
+          <div v-for="(x, i) in alertas.madrugada" :key="i" class="flex flex-wrap gap-x-3 border-b border-line/60 py-1"><b>{{ x.nombre }}</b><span class="text-mut">{{ x.rol }}</span><span class="font-mono">{{ x.ip || '?' }}</span><span class="text-mut">{{ fechaHora(x.created_at) }}</span></div>
+        </div>
+        <div v-if="alertas.consultas_excesivas?.length">
+          <div class="font-semibold mb-1">Consultas de padrón excesivas <span class="text-mut font-normal">· 40 o más en el período</span></div>
+          <div v-for="x in alertas.consultas_excesivas" :key="x.cedula" class="flex flex-wrap gap-x-3 border-b border-line/60 py-1"><b>{{ x.nombre }}</b><span class="text-mut">{{ x.rol }}</span><span class="text-red-700">{{ x.consultas }} consultas</span></div>
+        </div>
+        <div v-if="alertas.bloqueos?.length">
+          <div class="font-semibold mb-1">Bloqueos</div>
+          <div v-for="(x, i) in alertas.bloqueos" :key="i" class="flex flex-wrap gap-x-3 border-b border-line/60 py-1"><span class="badge border-red-200 bg-red-50 text-red-700">{{ x.accion === 'acceso_ip_bloqueada' ? 'conexión bloqueada' : x.accion === 'bloqueo_definitivo' ? 'definitivo' : 'temporal' }}</span><b>{{ x.nombre || x.cedula }}</b><span class="font-mono">{{ x.ip || '' }}</span><span class="text-mut">{{ fechaHora(x.created_at) }}</span></div>
+        </div>
+        <div v-if="alertas.exportaciones?.length">
+          <div class="font-semibold mb-1">Exportaciones e impresiones <span class="text-mut font-normal">· quién sacó datos del portal</span></div>
+          <div v-for="(x, i) in alertas.exportaciones" :key="i" class="flex flex-wrap gap-x-3 border-b border-line/60 py-1"><b>{{ x.nombre }}</b><span class="text-mut">{{ x.rol }}</span><span>{{ x.accion === 'exportacion' ? 'exportó' : 'imprimió' }} {{ x.tipo }}</span><span v-if="x.registros != null">{{ fmt(x.registros) }} registros</span><span class="text-mut">{{ fechaHora(x.created_at) }}</span></div>
+        </div>
+        <div v-if="!alertasTotal && !alertas.exportaciones?.length" class="text-mut">Nada fuera de lo normal en el período.</div>
+      </div>
+    </div>
+
     <p class="text-[12px] text-mut">Cuatro bandejas independientes; cada una se pliega con su título. Orden recomendado: bloqueados → primeros ingresos → solicitudes de PIN → accesos por enviar. <RouterLink to="/ayuda" class="text-fp-700 underline">Qué es cada una y cuándo se usa →</RouterLink></p>
     <div class="card overflow-hidden border-amber-200">
       <div class="p-4 border-b border-line bg-amber-50/60 flex items-center gap-2 cursor-pointer select-none" @click="abre.solis = !abre.solis">
@@ -1502,6 +1584,14 @@ const verifTotalVerificados = computed(() => { const r = verif.value.resumen; re
       </p>
       <div class="mt-5 pt-4 border-t border-line space-y-3">
         <p class="text-[13.5px] font-semibold">Capas de protección del acceso</p>
+
+        <label class="flex items-start gap-2.5 rounded-xl border p-3" :class="cfgSeg.ip_max_fallos > 0 ? 'border-fp-400 bg-fp-25' : 'border-line bg-white'">
+          <span class="w-4 h-4 mt-0.5 shrink-0 text-fp-700 text-center leading-4">⛨</span>
+          <span class="min-w-0">
+            <b class="text-[13.5px]">Límite por conexión: <input type="number" min="0" max="1000" v-model.number="cfgSeg.ip_max_fallos" class="inp !inline-block !w-16 !py-0.5 !px-1.5 text-center mx-1"> fallos en <input type="number" min="1" max="1440" v-model.number="cfgSeg.ip_ventana_min" class="inp !inline-block !w-16 !py-0.5 !px-1.5 text-center mx-1"> minutos</b>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Una misma conexión (IP) que acumule esos fallos, con cualquier cédula, queda fuera el resto de la ventana. Frena la fuerza bruta y a quien intente bloquear usuarios ajenos probando PIN. Queda en Alertas y en Actividad. 0 lo desactiva. Bloqueo definitivo de un usuario: al agotar los intentos <input type="number" min="1" max="10" v-model.number="cfgSeg.bloqueos_para_definitivo" class="inp !inline-block !w-12 !py-0.5 !px-1.5 text-center mx-1"> veces (los bloqueos temporales duplican su duración cada vez).</span>
+          </span>
+        </label>
 
         <label class="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer" :class="cfgSeg.bloqueo_activo ? 'border-fp-400 bg-fp-25' : 'border-line bg-white'">
           <input type="checkbox" v-model="cfgSeg.bloqueo_activo" class="accent-fp-600 w-4 h-4 mt-0.5">
