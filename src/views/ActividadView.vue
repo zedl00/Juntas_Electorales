@@ -26,7 +26,8 @@ const accionLbl = {
   exportacion: 'Exportación de datos', impresion_denegada: 'Impresión denegada', acceso_ip_bloqueada: 'Conexión bloqueada por intentos',
   bloqueo_temporal: 'Bloqueo temporal', bloqueo_definitivo: 'Bloqueo definitivo', pin_vencido: 'PIN inicial vencido', solicitud_pin: 'Solicitud de PIN',
   modo_emergencia: 'Modo de emergencia', config_seguridad: 'Configuración de seguridad', verif_lote: 'Lote de verificación', verif_resultados: 'Resultados de verificación',
-  api_cliente_alta: 'Clave de API creada', api_cliente_revocado: 'Clave de API revocada'
+  api_cliente_alta: 'Clave de API creada', api_cliente_revocado: 'Clave de API revocada',
+  cuenta_creada: 'Cuenta de acceso creada', cuenta_denegada: 'Creación de cuenta denegada'
 };
 const accionCls = {
   acceso: 'border-line bg-white text-mut', ingreso: 'border-line bg-white text-mut', sesion_duplicada: 'border-red-200 bg-red-50 text-red-700', sesion_cerrada: 'border-amber-200 bg-amber-50 text-amber-800', sesion_inactiva: 'border-line bg-paper text-ink', gancho_error: 'border-red-200 bg-red-50 text-red-700',
@@ -43,7 +44,8 @@ const accionCls = {
   exportacion: 'border-amber-200 bg-amber-50 text-amber-800', impresion_denegada: 'border-red-200 bg-red-50 text-red-700', acceso_ip_bloqueada: 'border-red-200 bg-red-50 text-red-700',
   bloqueo_temporal: 'border-amber-200 bg-amber-50 text-amber-800', bloqueo_definitivo: 'border-red-200 bg-red-50 text-red-700', pin_vencido: 'border-amber-200 bg-amber-50 text-amber-800', solicitud_pin: 'border-line bg-paper text-ink',
   modo_emergencia: 'border-red-600 bg-red-600 text-white', config_seguridad: 'border-line bg-paper text-ink', verif_lote: 'border-sky-200 bg-sky-50 text-sky-800', verif_resultados: 'border-sky-200 bg-sky-50 text-sky-800',
-  api_cliente_alta: 'border-sky-200 bg-sky-50 text-sky-800', api_cliente_revocado: 'border-amber-200 bg-amber-50 text-amber-800'
+  api_cliente_alta: 'border-sky-200 bg-sky-50 text-sky-800', api_cliente_revocado: 'border-amber-200 bg-amber-50 text-amber-800',
+  cuenta_creada: 'border-fp-200 bg-fp-50 text-fp-800', cuenta_denegada: 'border-red-200 bg-red-50 text-red-700'
 };
 
 const cargar = async () => {

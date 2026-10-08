@@ -65,6 +65,10 @@ El plan Pro de Supabase no incluye el gancho de verificación de contraseña, as
 
 Para que nadie rodee la función, el gancho **Customize Access Token** (disponible en Pro) niega la sesión a cualquier usuario del portal que entre por contraseña directa o que esté bloqueado. Se aplica también al refrescar sesiones, así que un bloqueo corta sesiones abiertas.
 
+## Capa I · Registro público cerrado (fase 91, 8 de octubre de 2026)
+
+Las cuentas de acceso las crea la función de servidor «cuentas» con el rol de servicio, solo a petición de un `admin_sne` con sesión válida (queda en Actividad como «Cuenta de acceso creada»). Con eso, en Supabase → Authentication → Sign In / Providers → Email se desactiva «Allow new users to sign up»: nadie puede crearse una cuenta con la clave pública del proyecto. Restablecer PIN no se afecta (cambia la contraseña en la base). Desplegar: `supabase functions deploy cuentas` (con verificación de JWT, que es lo normal).
+
 ## Puesta en marcha (una sola vez, en el panel de la base de datos)
 
 1. **Desplegar la función «acceso».** Edge Functions → Deploy a new function → nombre `acceso` → pegar el contenido de `supabase/functions/acceso/index.ts` → Deploy. En Edge Functions → Secrets añadir `EMAIL_DOM` = `@strategosfp.com` y, cuando exista el widget de Turnstile, `TURNSTILE_SECRET` con la Secret Key.

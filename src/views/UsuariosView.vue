@@ -2,7 +2,7 @@
 <script setup>
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { ref, computed, onMounted, watch } from 'vue';
-import { sb, sbAux, EMAIL_DOM, PORTAL_URL } from '../lib/supabase';
+import { sb, EMAIL_DOM, PORTAL_URL } from '../lib/supabase';
 import { perfil, esAdmin } from '../stores/auth';
 import { catMap, catGrupos, provsOf, regiones } from '../stores/catalogo';
 import { rolLbl, alcanceLbl } from '../lib/constantes';
@@ -486,18 +486,22 @@ const crearUsuario = async () => {
   if (cu.value.rol === 'coordinador_regional' && !cu.value.region) { cuErr.value = 'Selecciona la región.'; return; }
   if (String(cu.value.pin).length < 6) { cuErr.value = 'El PIN debe tener al menos 6 caracteres.'; return; }
   cuBusy.value = true;
-  const { data: su, error: e1 } = await sbAux.auth.signUp({ email: ced + EMAIL_DOM, password: String(cu.value.pin) });
-  if (e1) {
-    cuBusy.value = false;
-    cuErr.value = /already|registered|exists/i.test(e1.message)
-      ? 'Esta cédula ya tiene una cuenta de acceso creada.'
-      : (/email.*invalid|invalid.*email/i.test(e1.message)
-          ? 'Supabase rechazó el dominio interno «' + EMAIL_DOM + '». Debe ser un dominio real. Cámbialo en el archivo .env (VITE_EMAIL_DOM) y vuelve a compilar.'
-          : 'No se pudo crear la cuenta: ' + e1.message);
-    return;
+  /* Fase 91: la cuenta la crea la función de servidor «cuentas» con el rol de servicio (registro público cerrado) */
+  let r = {};
+  try {
+    const { data: ses } = await sb.auth.getSession();
+    const resp = await fetch(import.meta.env.VITE_SUPABASE_URL + '/functions/v1/cuentas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + (ses?.session?.access_token || '') },
+      body: JSON.stringify({ cedula: ced, pin: String(cu.value.pin) })
+    });
+    r = await resp.json().catch(() => ({}));
+    if (!resp.ok || !r?.ok) { cuBusy.value = false; cuErr.value = r?.msg || 'No se pudo crear la cuenta (' + resp.status + ').'; return; }
+  } catch (e) {
+    cuBusy.value = false; cuErr.value = 'No hay conexión con el servidor de cuentas. Revisa tu internet e inténtalo de nuevo.'; return;
   }
-  const uid = su?.user?.id;
-  if (!uid) { cuBusy.value = false; cuErr.value = 'La cuenta no devolvió identificador. En Supabase → Authentication → Providers → Email, desactiva "Confirm email" y reintenta.'; return; }
+  const uid = r.id;
+  if (!uid) { cuBusy.value = false; cuErr.value = 'La cuenta no devolvió identificador.'; return; }
   const m = catMap.value.get(cu.value.mun);
   const payload = {
     id: uid, cedula: ced, nombre: cu.value.nombre.trim(), telefono: cu.value.telefono.trim() || null,
