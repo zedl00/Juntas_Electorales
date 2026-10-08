@@ -39,6 +39,10 @@ Si alguien ya está conectado con un usuario, otra persona no puede entrar con e
 
 Si la persona pasa más de N minutos (30 por defecto) sin tocar, escribir ni desplazarse, la app cierra la sesión y vuelve a pedir el PIN con el aviso «Tu sesión se cerró por inactividad». Dos capas: la app se cierra sola, aunque esté sin conexión, y la base, en cada señal, compara la última señal recibida con el límite, así que una computadora que se abre tres días después no entra sin PIN. Volver a la pestaña no cuenta como actividad. Queda en Actividad como «Sesión cerrada por inactividad». Parámetro «Cerrar la sesión tras N minutos sin uso»; 0 lo desactiva.
 
+## Capa G · Controles desde la base y versión mínima (fase 89, 7 de octubre de 2026)
+
+El gancho «Customize Access Token» (que Supabase llama al crear y al renovar cada sesión) aplica la sesión única, el cierre por la Comisión y la inactividad desde la base, para que una app vieja o manipulada no pueda saltárselos. Solo afecta a sesiones creadas por la función «acceso»; las sesiones por contraseña de la administración en otras aplicaciones no cambian. Si el gancho fallara por un error interno, deja pasar y lo anota en Actividad como «Error en el gancho de sesión». La renovación ocurre al vencer el token: Authentication → Settings → «JWT expiry» (3600 s por defecto; se recomienda 900). «Versión mínima de la app» en Configuración: toda copia instalada con versión menor se actualiza sola al abrirse; la app además comprueba el service worker al abrir, cada hora y al volver a primer plano.
+
 ## Si alguien olvidó su PIN
 
 En la pantalla de acceso, «¿Olvidaste tu PIN?» → cédula → Solicitar. La solicitud cae en Gestión → Usuarios → «Solicitudes de PIN pendientes». La administración pulsa «Restablecer y enviar», se genera un PIN nuevo con su plazo, y se envía por WhatsApp. La respuesta en pantalla es la misma exista o no la cuenta, para no revelar quién es usuario, y solo se admite una solicitud pendiente por cédula.

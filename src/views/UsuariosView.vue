@@ -555,7 +555,7 @@ const cfgTr = ref({ alcance: 'municipio', excede_accion: 'autorizar', encargado_
 const cfgBusy = ref(false);
 
 /* ── Seguridad del acceso: captcha de Cloudflare (fase 60) ── */
-const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, identidad_campos: 'fecha', pin_caduca_horas: 72, confirmar_sne: true, reverificar_al_reset: true, sesion_unica: true, sesion_minutos: 5, inactividad_minutos: 30 });
+const cfgSeg = ref({ captcha_activo: false, captcha_site_key: '', bloqueo_activo: true, intentos_aviso: 3, intentos_bloqueo: 5, bloqueo_minutos: 15, verificar_padron: true, identidad_campos: 'fecha', pin_caduca_horas: 72, confirmar_sne: true, reverificar_al_reset: true, sesion_unica: true, sesion_minutos: 5, inactividad_minutos: 30, version_minima: '' });
 const segBusy = ref(false);
 const cargarCfgSeg = async () => {
   const { data } = await sb.from('config_seguridad').select('*').limit(1).maybeSingle();
@@ -569,7 +569,7 @@ const guardarCfgSeg = async () => {
     bloqueo_activo: !!c.bloqueo_activo, intentos_aviso: +c.intentos_aviso || 3, intentos_bloqueo: +c.intentos_bloqueo || 5,
     bloqueo_minutos: +c.bloqueo_minutos || 15, verificar_padron: !!c.verificar_padron, identidad_campos: c.identidad_campos || 'fecha',
     pin_caduca_horas: +c.pin_caduca_horas || 72, confirmar_sne: !!c.confirmar_sne, reverificar_al_reset: !!c.reverificar_al_reset,
-    sesion_unica: !!c.sesion_unica, sesion_minutos: +c.sesion_minutos || 5, inactividad_minutos: Math.max(0, +c.inactividad_minutos || 0)
+    sesion_unica: !!c.sesion_unica, sesion_minutos: +c.sesion_minutos || 5, inactividad_minutos: Math.max(0, +c.inactividad_minutos || 0), version_minima: (c.version_minima || '').trim()
   } });
   if (!error) { try { await sb.rpc('portal_latido'); } catch (e) { /* solo refresca la presencia */ } }
   segBusy.value = false;
@@ -1525,6 +1525,14 @@ const verifTotalVerificados = computed(() => { const r = verif.value.resumen; re
           <span class="min-w-0">
             <b class="text-[13.5px]">Cerrar la sesión tras <input type="number" min="0" max="1440" v-model.number="cfgSeg.inactividad_minutos" class="inp !inline-block !w-16 !py-0.5 !px-1.5 text-center mx-1"> minutos sin uso</b>
             <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Si la persona no toca, escribe ni se desplaza durante ese tiempo, la app cierra la sesión y vuelve a pedir el PIN, con el aviso «Tu sesión se cerró por inactividad». Vale también si la pestaña quedó abierta durante días o la computadora estuvo cerrada: al volver, no entra sin PIN. El intento queda en Actividad como «Sesión cerrada por inactividad». Poner <b>0</b> lo desactiva.</span>
+          </span>
+        </label>
+
+        <label class="flex items-start gap-2.5 rounded-xl border p-3 border-fp-400 bg-fp-25">
+          <span class="w-4 h-4 mt-0.5 shrink-0 text-fp-700 text-center leading-4">⬆</span>
+          <span class="min-w-0">
+            <b class="text-[13.5px]">Versión mínima de la app: <input v-model.trim="cfgSeg.version_minima" class="inp !inline-block !w-24 !py-0.5 !px-1.5 text-center mx-1 font-mono" placeholder="8.13.0"></b>
+            <span class="block text-[11.5px] text-mut leading-snug mt-0.5">Toda app instalada con una versión menor descarta su copia guardada y se actualiza sola al abrirse o al volver a primer plano. <b>Después de cada despliegue</b>, escriba aquí la versión que subió (la que se ve abajo a la izquierda) y pulse «Guardar». Además, la base ya no renueva la sesión de una app que no dé señal: aunque sea vieja, a lo sumo en una hora vuelve a pedir el PIN.</span>
           </span>
         </label>
 

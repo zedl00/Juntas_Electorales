@@ -4,6 +4,7 @@ import { sb, EMAIL_DOM } from '../lib/supabase';
 import { rolLbl } from '../lib/constantes';
 import { soloDig } from '../lib/formato';
 import { t } from './toasts';
+import { comprobarVersion } from './actualizacion';
 
 export const sesion = ref(null);
 export const perfil = ref(null);
@@ -118,7 +119,7 @@ export async function logout() {
    La última actividad se guarda en el navegador para que sobreviva a recargas y a días con la pestaña abierta.
    La app se cierra sola al superar el límite (aunque no haya conexión); la base lo confirma en cada latido. */
 const ACT_KEY = 'portal_act';
-let inactividadMin = 0, actTimer = null;
+let inactividadMin = 0, actTimer = null, versionMinima = '';
 let ultimaActividadMem = Date.now();
 function marcarActividad() {
   ultimaActividadMem = Date.now();
@@ -130,7 +131,11 @@ function minutosInactivo() {
   return (Date.now() - t) / 60000;
 }
 async function cargarLimiteInactividad() {
-  try { const { data } = await sb.schema('public').rpc('portal_config_publica'); inactividadMin = Math.max(0, +(data?.inactividad_minutos ?? 0) || 0); } catch (e) { /* conserva el valor anterior */ }
+  try {
+    const { data } = await sb.schema('public').rpc('portal_config_publica');
+    inactividadMin = Math.max(0, +(data?.inactividad_minutos ?? 0) || 0);
+    versionMinima = data?.version_minima || '';
+  } catch (e) { /* conserva el valor anterior */ }
 }
 async function cerrarPorInactividad() {
   detenerLatido();
@@ -174,6 +179,7 @@ async function latido() {
 }
 function latidoVisible() {
   if (document.visibilityState !== 'visible') return;
+  cargarLimiteInactividad().then(() => comprobarVersion(versionMinima));
   if (sesion.value && inactividadMin > 0 && minutosInactivo() >= inactividadMin) { cerrarPorInactividad(); return; }   // volver a la pestaña no cuenta como actividad
   latido();
 }
@@ -196,6 +202,8 @@ let readyResolve;
 export const authReady = new Promise(r => { readyResolve = r; });
 
 export async function inicializarAuth() {
+  await cargarLimiteInactividad();
+  if (await comprobarVersion(versionMinima)) return;      // versión vieja: se recarga, no sigue
   sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') { detenerLatido(); sesion.value = null; perfil.value = null; } });
   const { data } = await sb.auth.getSession();
   if (data?.session) { sesion.value = data.session; await postLogin(); }

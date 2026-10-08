@@ -12,7 +12,7 @@ const fQ = ref('');
 const abierto = ref(null);
 
 const accionLbl = {
-  acceso: 'Acceso al portal', ingreso: 'Ingreso con PIN', sesion_duplicada: 'Intento con sesión abierta', sesion_cerrada: 'Sesión cerrada por la Comisión', sesion_inactiva: 'Sesión cerrada por inactividad',
+  acceso: 'Acceso al portal', ingreso: 'Ingreso con PIN', sesion_duplicada: 'Intento con sesión abierta', sesion_cerrada: 'Sesión cerrada por la Comisión', sesion_inactiva: 'Sesión cerrada por inactividad', gancho_error: 'Error en el gancho de sesión',
   consulta_padron: 'Consulta de padrón',
   registro: 'Registro de postulante', edicion: 'Edición de postulante',
   cambio_estado: 'Cambio de etapa', eliminacion: 'Eliminación de postulante',
@@ -25,7 +25,7 @@ const accionLbl = {
   baja_usuario: 'Baja de usuario'
 };
 const accionCls = {
-  acceso: 'border-line bg-white text-mut', ingreso: 'border-line bg-white text-mut', sesion_duplicada: 'border-red-200 bg-red-50 text-red-700', sesion_cerrada: 'border-amber-200 bg-amber-50 text-amber-800', sesion_inactiva: 'border-line bg-paper text-ink',
+  acceso: 'border-line bg-white text-mut', ingreso: 'border-line bg-white text-mut', sesion_duplicada: 'border-red-200 bg-red-50 text-red-700', sesion_cerrada: 'border-amber-200 bg-amber-50 text-amber-800', sesion_inactiva: 'border-line bg-paper text-ink', gancho_error: 'border-red-200 bg-red-50 text-red-700',
   consulta_padron: 'border-sky-200 bg-sky-50 text-sky-800',
   registro: 'border-fp-200 bg-fp-50 text-fp-800', edicion: 'border-line bg-paper text-ink',
   cambio_estado: 'border-fp-600 bg-fp-600 text-white', eliminacion: 'border-red-200 bg-red-50 text-red-700',
