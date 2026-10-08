@@ -130,7 +130,7 @@ function minutosInactivo() {
   return (Date.now() - t) / 60000;
 }
 async function cargarLimiteInactividad() {
-  try { const { data } = await sb.rpc('portal_config_publica'); inactividadMin = Math.max(0, +(data?.inactividad_minutos ?? 0) || 0); } catch (e) { /* conserva el valor anterior */ }
+  try { const { data } = await sb.schema('public').rpc('portal_config_publica'); inactividadMin = Math.max(0, +(data?.inactividad_minutos ?? 0) || 0); } catch (e) { /* conserva el valor anterior */ }
 }
 async function cerrarPorInactividad() {
   detenerLatido();
